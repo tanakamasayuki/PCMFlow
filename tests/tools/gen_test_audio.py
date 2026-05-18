@@ -184,14 +184,45 @@ def encode_mp3_fixtures(out_dir: Path) -> dict[str, Path]:
         ("Sine440Mono22050_128k",   22050, 1, 0.2, 128),
         ("Sine440Stereo44100_128k", 44100, 2, 0.2, 128),
     ]
+    return _encode_via_ffmpeg(ffmpeg, out_dir, specs, codec="libmp3lame", ext="mp3")
 
+
+def encode_flac_fixtures(out_dir: Path) -> dict[str, Path]:
+    """Encode a small set of FLAC fixtures from on-the-fly WAV inputs."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        print(
+            "warning: ffmpeg not found — skipping FLAC fixture generation.",
+            file=sys.stderr,
+        )
+        return {}
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    specs = [
+        # (sym, sample_rate, channels, duration_sec, kbps_marker_unused)
+        ("Sine440Mono22050",   22050, 1, 0.2, 0),
+        ("Sine440Stereo44100", 44100, 2, 0.2, 0),
+    ]
+    return _encode_via_ffmpeg(ffmpeg, out_dir, specs, codec="flac", ext="flac")
+
+
+def _encode_via_ffmpeg(
+    ffmpeg: str,
+    out_dir: Path,
+    specs: list,
+    codec: str,
+    ext: str,
+) -> dict[str, Path]:
     out: dict[str, Path] = {}
     for sym, sr, ch, dur, kbps in specs:
         wav_path = out_dir / f"_tmp_{sym}.wav"
-        mp3_name = f"sine_{sr}_{ch}ch_{kbps}k.mp3"
-        mp3_path = out_dir / mp3_name
+        if ext == "mp3":
+            target_name = f"sine_{sr}_{ch}ch_{kbps}k.{ext}"
+        else:
+            target_name = f"sine_{sr}_{ch}ch.{ext}"
+        target_path = out_dir / target_name
 
-        channels: list[list[float]]
         if ch == 1:
             channels = [sine(440.0, sr, dur)]
         else:
@@ -204,16 +235,15 @@ def encode_mp3_fixtures(out_dir: Path) -> dict[str, Path]:
             samples_per_channel=channels,
         )
 
-        cmd = [
-            ffmpeg, "-y", "-loglevel", "error",
-            "-i", str(wav_path),
-            "-codec:a", "libmp3lame",
-            "-b:a", f"{kbps}k",
-            str(mp3_path),
-        ]
+        cmd = [ffmpeg, "-y", "-loglevel", "error", "-i", str(wav_path)]
+        if codec == "libmp3lame":
+            cmd += ["-codec:a", "libmp3lame", "-b:a", f"{kbps}k"]
+        elif codec == "flac":
+            cmd += ["-codec:a", "flac"]
+        cmd += [str(target_path)]
         subprocess.run(cmd, check=True)
         wav_path.unlink(missing_ok=True)
-        out[sym] = mp3_path
+        out[sym] = target_path
 
     return out
 
@@ -325,6 +355,16 @@ def main() -> None:
             namespace="Mp3Fixtures",
         )
 
+    # FLAC fixtures (via ffmpeg, if available) for the FlacDecoder test.
+    flac_dir = root / "flac_decoder" / "input"
+    flac_files = encode_flac_fixtures(flac_dir)
+    if flac_files:
+        emit_c_header(
+            flac_dir / "flac_fixtures.h",
+            flac_files,
+            namespace="FlacFixtures",
+        )
+
     # Embedded-header companion (for in-memory tests on host + ESP32).
     wav_files = {
         "Sine440Mono8Bit22050":   wav_dir / "sine_440hz_mono_8bit_22050.wav",
@@ -347,6 +387,13 @@ def main() -> None:
         for p in sorted(mp3_dir.glob("*.mp3")):
             print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
         print(f"  {mp3_header_path.relative_to(root)}  ({mp3_header_path.stat().st_size} bytes)")
+
+    if flac_files:
+        flac_header_path = flac_dir / "flac_fixtures.h"
+        print(f"Wrote FLAC fixtures under: {flac_dir}")
+        for p in sorted(flac_dir.glob("*.flac")):
+            print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
+        print(f"  {flac_header_path.relative_to(root)}  ({flac_header_path.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":

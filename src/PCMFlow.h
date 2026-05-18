@@ -14,6 +14,7 @@
 #include "WavReader.h"
 #include "WavWriter.h"
 #include "Mp3Decoder.h"
+#include "FlacDecoder.h"
 
 class PCMRingBuffer {
 public:

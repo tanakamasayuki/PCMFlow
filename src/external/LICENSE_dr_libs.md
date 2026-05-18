@@ -15,3 +15,4 @@ required, but we note authorship here for clarity.
 Vendored files:
 
 - `dr_mp3.h` — MP3 decoder
+- `dr_flac.h` — FLAC decoder
