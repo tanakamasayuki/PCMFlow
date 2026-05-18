@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .env
 report.html
+
+# Per-test output directory for fopen()-generated artifacts (host profile).
+output/

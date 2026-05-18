@@ -35,8 +35,70 @@ ESP32-S3 やその他のターゲット（C3 / C6 / P4 / RP2040 など）での�
 ### host プロファイルの注意点
 
 - Arduino Core API は動作するため、ロジック検証はほぼそのまま書ける
-- ファイル操作も可能
+- ファイル操作も可能（後述）
 - **メモリがほぼ無制約**で動いてしまうため、リングバッファや作業領域のサイズ制約は ESP32 想定の上限値を assertion で明示的に検証する
+
+### host のみで実行するテスト
+
+以下のようなテストは host 上でのみ実行する。
+
+- 大きなゴールデンファイルとの比較（ESP32 だと flash / RAM に乗らない）
+- `fopen` / 標準ファイル I/O を使ったローカルファイル書き出し（WAV writer の出力検証など）
+- 大量のテストデータを使った網羅的なテスト
+
+host プロファイルでは `fopen` などの C 標準ファイル I/O が **ホスト PC のローカルファイルシステム** に対して動作する。これを利用して、たとえば WAV writer のテストではスケッチ側で `.wav` をローカルに保存し、Python 側で内容を検証する、といったやり方が取れる。
+
+#### 入出力ファイルの置き場所
+
+実測により、host プロファイルでのスケッチ実行時の CWD は **スケッチディレクトリ自身**（`tests/<name>/`）になる。`.out` の場所（`build/host/`）ではないことに注意。
+
+各テストでファイルを使う場合は次のサブフォルダ規約に従う。
+
+| フォルダ | git 管理 | 用途 |
+|----------|---------|------|
+| `input/`  | ✅ 対象  | テスト固定入力（WAV / MP3 / golden ファイルなど）。リポジトリにコミット。 |
+| `output/` | ❌ 対象外 (`tests/.gitignore`) | スケッチが書き出す成果物。テスト後も残るので手動確認可能。次回実行前に [conftest.py](conftest.py) が削除。 |
+
+スケッチ側の例:
+
+```cpp
+#include <filesystem>
+
+// 読み込み
+FILE* in = fopen("input/sample.wav", "rb");
+// ...
+
+// 書き出し
+std::error_code ec;
+std::filesystem::create_directories("output", ec);
+FILE* out = fopen("output/dump.wav", "wb");
+// ...
+```
+
+Python 側はそれぞれ `tests/<name>/input/sample.wav`、`tests/<name>/output/dump.wav` を参照して検証する。
+
+#### sketch.yaml の書き方
+
+host のみで動かしたいテストは、`sketch.yaml` から `esp32` プロファイルを **除外** すること。これにより `--profile=esp32` 実行時に該当テストは自動的にスキップされる。
+
+```yaml
+# host 専用テストの sketch.yaml（esp32 プロファイル無し）
+profiles:
+  host:
+    fqbn: lang-ship:host:host
+    port: socket://localhost
+    platforms:
+      - platform: lang-ship:host (1.0.5)
+        platform_index_url: https://tanakamasayuki.github.io/lang-ship-arduino-core/package_lang-ship_index.json
+    libraries:
+      - dir: ../../
+
+default_profile: host
+```
+
+#### 実機でも検証できるなら両対応を優先
+
+純粋なロジック（リングバッファ・bit depth 変換・gain など）は実機でも動くので、`host` / `esp32` 両プロファイルを定義する。host のみに絞るのは「実機では現実的に動かない／意味がない」テストに限定する。
 
 ## ディレクトリ構成
 

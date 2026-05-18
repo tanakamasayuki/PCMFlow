@@ -35,8 +35,70 @@ Build checks for ESP32-S3 and other targets (C3 / C6 / P4 / RP2040 etc.) are cov
 ### Notes on the host profile
 
 - Arduino Core APIs work, so logic tests can be written almost as-is
-- File I/O is available
+- File I/O is available (see below)
 - **Memory is effectively unlimited**, so ring-buffer and working-area size limits must be asserted explicitly against the ESP32-class upper bounds
+
+### Host-only tests
+
+The following kinds of tests are run only on the host:
+
+- Comparison against large golden files (too big for ESP32 flash / RAM)
+- `fopen` / standard file I/O writing to the local filesystem (e.g., validating WAV writer output)
+- Exhaustive tests with large amounts of test data
+
+On the host profile, C standard file I/O such as `fopen` operates against **the host PC's local filesystem**. This lets a sketch write, for example, a `.wav` file locally and have the Python side inspect it.
+
+#### Where input / output files live
+
+Empirically, the CWD when the sketch runs under the host profile is the **sketch directory itself** (`tests/<name>/`), not the location of the `.out` binary (`build/host/`).
+
+Per-test files follow this convention:
+
+| Folder    | Git-tracked                | Purpose |
+|-----------|----------------------------|---------|
+| `input/`  | ✅ tracked                  | Fixed test inputs (WAV / MP3 / golden files). Committed to the repo. |
+| `output/` | ❌ ignored (`tests/.gitignore`) | Sketch-generated artifacts. Left in place after the run for inspection; wiped before the next run by [conftest.py](conftest.py). |
+
+Sketch-side example:
+
+```cpp
+#include <filesystem>
+
+// Read
+FILE* in = fopen("input/sample.wav", "rb");
+// ...
+
+// Write
+std::error_code ec;
+std::filesystem::create_directories("output", ec);
+FILE* out = fopen("output/dump.wav", "wb");
+// ...
+```
+
+The Python side verifies the files at `tests/<name>/input/sample.wav` and `tests/<name>/output/dump.wav` respectively.
+
+#### sketch.yaml convention
+
+For host-only tests, **omit the `esp32` profile** from `sketch.yaml`. The test then auto-skips when running with `--profile=esp32`.
+
+```yaml
+# sketch.yaml for a host-only test (no esp32 profile)
+profiles:
+  host:
+    fqbn: lang-ship:host:host
+    port: socket://localhost
+    platforms:
+      - platform: lang-ship:host (1.0.5)
+        platform_index_url: https://tanakamasayuki.github.io/lang-ship-arduino-core/package_lang-ship_index.json
+    libraries:
+      - dir: ../../
+
+default_profile: host
+```
+
+#### Prefer dual-profile when both work
+
+Pure-logic tests (ring buffer, bit-depth conversion, gain, etc.) run fine on hardware too, so define both `host` and `esp32` profiles. Restrict host-only to tests that cannot realistically (or meaningfully) run on the device.
 
 ## Directory layout
 
