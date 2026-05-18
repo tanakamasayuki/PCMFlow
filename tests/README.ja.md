@@ -114,6 +114,7 @@ default_profile: host
 - `wav_writer/` — `WavWriter` の統合テスト（`output/` に WAV を書き出し、Python の `wave` モジュールで独立検証。host 専用）。
 - `mp3_decoder/` — `Mp3Decoder` の単体テスト（ffmpeg 生成 MP3 を埋め込み）。
 - `flac_decoder/` — `FlacDecoder` の単体テスト（ffmpeg 生成 FLAC を埋め込み）。
+- `pipeline/` — `PCMFlow` パイプライン本体の統合テスト（WAV / MP3 / FLAC の同一音源で codec 自動検出・チャンネル / レート / ビット深度変換・gain / mute を網羅）。
 - `fileio/` — host プロファイルの `fopen` 動作を検証するプローブテスト（host 専用）。
 - `tools/gen_test_audio.py` — 各テストの `input/` 配下に WAV / MP3 / FLAC フィクスチャ（と埋め込み用 `.h`）を生成する Python スクリプト。MP3 / FLAC 生成には `ffmpeg` が必要。
 - 以降、機能ごとにディレクトリを追加していく。
@@ -139,6 +140,7 @@ default_profile: host
 | Arduino `Stream` adapter | ✅ stream_adapter | | |
 | MP3 decoder | ✅ mp3_decoder | | |
 | FLAC decoder | ✅ flac_decoder | | |
+| `PCMFlow` パイプライン（自動codec検出・整形・gain） | ✅ pipeline | | |
 | メモリフットプリント計測 | — | | ⬜ |
 
 ---

@@ -248,6 +248,52 @@ def _encode_via_ffmpeg(
     return out
 
 
+def build_pipeline_fixtures(out_dir: Path) -> dict[str, Path]:
+    """A single 440 Hz mono sine encoded as WAV / MP3 / FLAC so the
+    pipeline integration test can exercise all three codecs with the
+    same reference content.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    sr, ch, dur = 22050, 1, 0.2
+    sines = [sine(440.0, sr, dur)]
+
+    wav_path = out_dir / "sine_440hz_mono_22050.wav"
+    write_wav(
+        wav_path,
+        sample_rate=sr,
+        channels=ch,
+        bits_per_sample=16,
+        samples_per_channel=sines,
+    )
+
+    files: dict[str, Path] = {"Wav": wav_path}
+
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is not None:
+        mp3_path = out_dir / "sine_440hz_mono_22050.mp3"
+        subprocess.run(
+            [ffmpeg, "-y", "-loglevel", "error",
+             "-i", str(wav_path),
+             "-codec:a", "libmp3lame", "-b:a", "128k",
+             str(mp3_path)],
+            check=True,
+        )
+        files["Mp3"] = mp3_path
+
+        flac_path = out_dir / "sine_440hz_mono_22050.flac"
+        subprocess.run(
+            [ffmpeg, "-y", "-loglevel", "error",
+             "-i", str(wav_path),
+             "-codec:a", "flac",
+             str(flac_path)],
+            check=True,
+        )
+        files["Flac"] = flac_path
+
+    return files
+
+
 def emit_c_header(header_path: Path, wavs: dict[str, Path], namespace: str) -> None:
     """Emit a single C header that exposes each WAV file as a `static const
     uint8_t kFoo[]` array plus a matching `kFooSize` constant.
@@ -365,6 +411,16 @@ def main() -> None:
             namespace="FlacFixtures",
         )
 
+    # Pipeline integration fixtures: one of each codec, same source content.
+    pipe_dir = root / "pipeline" / "input"
+    pipe_files = build_pipeline_fixtures(pipe_dir)
+    if pipe_files:
+        emit_c_header(
+            pipe_dir / "pipeline_fixtures.h",
+            pipe_files,
+            namespace="PipelineFixtures",
+        )
+
     # Embedded-header companion (for in-memory tests on host + ESP32).
     wav_files = {
         "Sine440Mono8Bit22050":   wav_dir / "sine_440hz_mono_8bit_22050.wav",
@@ -394,6 +450,14 @@ def main() -> None:
         for p in sorted(flac_dir.glob("*.flac")):
             print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
         print(f"  {flac_header_path.relative_to(root)}  ({flac_header_path.stat().st_size} bytes)")
+
+    if pipe_files:
+        pipe_header_path = pipe_dir / "pipeline_fixtures.h"
+        print(f"Wrote pipeline fixtures under: {pipe_dir}")
+        for ext in ("wav", "mp3", "flac"):
+            for p in sorted(pipe_dir.glob(f"*.{ext}")):
+                print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
+        print(f"  {pipe_header_path.relative_to(root)}  ({pipe_header_path.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":
