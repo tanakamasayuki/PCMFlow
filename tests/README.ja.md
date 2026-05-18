@@ -52,8 +52,11 @@ uv run --env-file .env pytest --html=report.html --self-contained-html
 
 ## ディレクトリ構成
 
-- `smoke/` — 雛形検証用のスモークテスト。ホスト上でビルド・実行できる最小スケッチ。
-- 以降、`host/` `device/` `manual/` を必要に応じて追加する（[TEST_PLAN.ja.md](TEST_PLAN.ja.md) 参照）。
+各サブディレクトリが 1 つのテスト対象機能に対応する。
+
+- `smoke/` — 雛形検証用のスモークテスト。ホスト上でビルド・実行できる最小スケッチ。テスト基盤の動作確認用。
+- `ringbuffer/` — `PCMRingBuffer` の単体テスト。
+- 以降、機能ごとにディレクトリを追加していく（[TEST_PLAN.ja.md](TEST_PLAN.ja.md) のカバレッジ表参照）。
 
 ## pytest-embedded-arduino-cli
 

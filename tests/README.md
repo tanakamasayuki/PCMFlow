@@ -52,8 +52,11 @@ uv run --env-file .env pytest --html=report.html --self-contained-html
 
 ## Directory layout
 
-- `smoke/` — Template smoke test. Minimal sketch that builds and runs on the host.
-- Additional directories (`host/`, `device/`, `manual/`) will be added as needed; see [TEST_PLAN.md](TEST_PLAN.md).
+Each subdirectory corresponds to one feature under test.
+
+- `smoke/` — Template smoke test. Minimal sketch that builds and runs on the host. Verifies the test infrastructure itself.
+- `ringbuffer/` — Unit tests for `PCMRingBuffer`.
+- Add a new directory per feature as the implementation grows (see the coverage matrix in [TEST_PLAN.md](TEST_PLAN.md)).
 
 ## pytest-embedded-arduino-cli
 
