@@ -33,7 +33,8 @@ void setup()
     audio.setGain(0.8f);
     audio.setBufferFrames(2048);
 
-    if (!audio.open(EmbeddedMp3::kMp3, EmbeddedMp3::kMp3Size)) {
+    if (!audio.open(EmbeddedMp3::kMp3, EmbeddedMp3::kMp3Size))
+    {
         Serial.print("audio.open() failed, error=");
         Serial.println((int)audio.lastError());
         return;
@@ -41,27 +42,34 @@ void setup()
 
     Serial.println("PlayMp3 ready");
     Serial.print("Source: ");
-    Serial.print(audio.sourceFormat().sampleRate); Serial.print(" Hz, ");
-    Serial.print(audio.sourceFormat().channels);   Serial.println(" ch");
+    Serial.print(audio.sourceFormat().sampleRate);
+    Serial.print(" Hz, ");
+    Serial.print(audio.sourceFormat().channels);
+    Serial.println(" ch");
     Serial.print("Output: ");
-    Serial.print(audio.outputFormat().sampleRate); Serial.print(" Hz, ");
-    Serial.print(audio.outputFormat().channels);   Serial.println(" ch");
+    Serial.print(audio.outputFormat().sampleRate);
+    Serial.print(" Hz, ");
+    Serial.print(audio.outputFormat().channels);
+    Serial.println(" ch");
 }
 
 void loop()
 {
     audio.pump();
 
-    if (audio.availableFrames() < 256) {
-        if (audio.isEof()) {
+    if (audio.availableFrames() < 256)
+    {
+        if (audio.isEof())
+        {
             Serial.println("EOF");
-            while (true) delay(1000);
+            while (true)
+                delay(1000);
         }
         delay(1);
         return;
     }
 
-    int16_t buf[256 * 2];   // 256 frames * 2 channels
+    int16_t buf[256 * 2]; // 256 frames * 2 channels
     const size_t got = audio.readFrames(buf, 256);
 
     // TODO: hand `buf` off to your output device. For example, on ESP32
@@ -71,9 +79,11 @@ void loop()
     //
     // Here we just sample the peak so the example does something visible.
     int16_t peak = 0;
-    for (size_t i = 0; i < got * 2; ++i) {
+    for (size_t i = 0; i < got * 2; ++i)
+    {
         const int16_t v = buf[i] < 0 ? -buf[i] : buf[i];
-        if (v > peak) peak = v;
+        if (v > peak)
+            peak = v;
     }
     Serial.print("frames=");
     Serial.print((unsigned)got);
