@@ -2,10 +2,72 @@
 
 > 日本語版: [README.ja.md](README.ja.md)
 
-This directory contains automated and manual tests for PCMFlow.
-For the overall test strategy and coverage matrix, see [TEST_PLAN.md](TEST_PLAN.md).
+This directory contains the automated tests for PCMFlow.
 
 Tests use [pytest-embedded](https://docs.espressif.com/projects/pytest-embedded/en/latest/) with the Arduino CLI backend, building and running sketches either on the host (`lang-ship:host`) or on real ESP32 hardware.
+
+## Testing strategy
+
+PCMFlow is a device-, codec-, and task-independent **PCM flow (pure data transformation)** library. Tests therefore consist entirely of **automated tests**.
+
+PCMFlow's responsibility ends at "input bytes → formatted PCM bytes"; output device control is out of scope ([SPEC.md](../SPEC.md) §18). Correctness can be fully verified by numerical assertions:
+
+- Decoded output → byte-level comparison against golden PCM files
+- Conversion logic (bit depth / channel / rate / gain) → numerical comparison of input vs. output samples
+- Buffer behavior → state checks via `availableFrames()` / `readFrames()`
+- Memory footprint → measured on real-hardware targets
+
+On-device listening checks and build matrices across multiple targets are **not** part of the test suite. Those are covered by running the sketches in [examples/](../examples/) on the respective boards — integration verification on the user or maintainer side, not a PCMFlow automated test.
+
+All inputs are generated programmatically or come from fixed test audio files; all expected outputs are verified by assertion.
+
+## Target environments
+
+Automated tests are limited to **low-overhead, easily-automated environments**.
+
+| Environment | Profile | Purpose |
+|-------------|---------|---------|
+| host | `lang-ship:host` | Logic verification (effectively unlimited memory, file I/O available, fast in CI) |
+| ESP32 | `esp32:esp32:esp32` | Real-hardware build verification, footprint measurement, Xtensa-specific behavior |
+
+Build checks for ESP32-S3 and other targets (C3 / C6 / P4 / RP2040 etc.) are covered by the sketches under [examples/](../examples/).
+
+### Notes on the host profile
+
+- Arduino Core APIs work, so logic tests can be written almost as-is
+- File I/O is available
+- **Memory is effectively unlimited**, so ring-buffer and working-area size limits must be asserted explicitly against the ESP32-class upper bounds
+
+## Directory layout
+
+Each subdirectory corresponds to one feature under test.
+
+- `smoke/` — Template smoke test. Minimal sketch that builds and runs on the host. Verifies the test infrastructure itself.
+- `ringbuffer/` — Unit tests for `PCMRingBuffer`.
+- `convert/` — Unit tests for `PCMConvert` (bit depth / channel / gain).
+- A new directory is added per feature as the implementation grows.
+
+## Coverage matrix
+
+| Feature | host (auto) | ESP32 (auto) | Not covered |
+|---------|-------------|--------------|-------------|
+| Library build | ✅ smoke | | ⬜ (ESP32) |
+| `PCMFormat` configuration | ✅ ringbuffer | | |
+| Ring buffer write / read | ✅ ringbuffer | | |
+| `availableFrames()` / `readFrames()` | ✅ ringbuffer | | |
+| Bit depth conversion (8-bit ⇔ 16-bit) | ✅ convert | | |
+| Signed ⇔ unsigned conversion | ✅ convert | | |
+| Mono ⇔ stereo conversion | ✅ convert | | |
+| Gain / mute / clipping | ✅ convert | | |
+| Sample rate conversion | | | ⬜ |
+| WAV reader | | | ⬜ |
+| MP3 decoder | | | ⬜ |
+| FLAC decoder | | | ⬜ |
+| WAV writer (optional) | | | ⬜ |
+| Arduino `Stream` adapter | | | ⬜ |
+| Memory footprint measurement | — | | ⬜ |
+
+---
 
 ## Prerequisites
 
@@ -31,11 +93,11 @@ From the `tests/` directory:
 # Run everything (default is the host profile)
 uv run --env-file .env pytest
 
-# Smoke test only
-uv run --env-file .env pytest smoke/
+# Run a specific test
+uv run --env-file .env pytest ringbuffer/
 
 # Run on real ESP32 hardware
-uv run --env-file .env pytest smoke/ --profile=esp32
+uv run --env-file .env pytest ringbuffer/ --profile=esp32
 ```
 
 Re-run only failed tests:
@@ -49,14 +111,6 @@ HTML report:
 ```sh
 uv run --env-file .env pytest --html=report.html --self-contained-html
 ```
-
-## Directory layout
-
-Each subdirectory corresponds to one feature under test.
-
-- `smoke/` — Template smoke test. Minimal sketch that builds and runs on the host. Verifies the test infrastructure itself.
-- `ringbuffer/` — Unit tests for `PCMRingBuffer`.
-- Add a new directory per feature as the implementation grows (see the coverage matrix in [TEST_PLAN.md](TEST_PLAN.md)).
 
 ## pytest-embedded-arduino-cli
 

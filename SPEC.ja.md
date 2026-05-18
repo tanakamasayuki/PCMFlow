@@ -24,7 +24,7 @@
 
 実用想定（一例）: ESP32 / ESP32-S3 / ESP32-C3 / ESP32-C6 / ESP32-P4 / RP2040 / RP2350 / Teensy 4.x / SAMD51 / STM32 F4 以上 / nRF52 など。
 
-MP3 / FLAC デコードは ESP32 クラス以上のリソースを前提とする。自動テストは [tests/](./tests/) 配下で host + ESP32 のみを対象とし、それ以外のターゲットでのビルド確認は [examples/](./examples/) のスケッチで担保する（[tests/TEST_PLAN.ja.md](./tests/TEST_PLAN.ja.md) 参照）。
+MP3 / FLAC デコードは ESP32 クラス以上のリソースを前提とする。自動テストは host + ESP32 のみを対象とし、それ以外のターゲットでのビルド確認は [examples/](./examples/) のスケッチで担保する。テストの詳細は [tests/README.ja.md](./tests/README.ja.md) 参照。
 
 ---
 

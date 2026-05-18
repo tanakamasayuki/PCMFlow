@@ -24,7 +24,7 @@ Therefore, **AVR-class boards (Arduino Uno / Mega / Nano, etc.) are not supporte
 
 Practical targets (examples): ESP32 / ESP32-S3 / ESP32-C3 / ESP32-C6 / ESP32-P4 / RP2040 / RP2350 / Teensy 4.x / SAMD51 / STM32 F4 and above / nRF52.
 
-MP3 / FLAC decoding assumes ESP32-class or higher resources. The automated test suite under [tests/](./tests/) targets only the host + ESP32 environments; build verification on other targets is performed via sketches in [examples/](./examples/) (see [tests/TEST_PLAN.md](./tests/TEST_PLAN.md)).
+MP3 / FLAC decoding assumes ESP32-class or higher resources. The automated test suite targets only the host + ESP32 environments; build verification on other targets is performed via sketches in [examples/](./examples/). See [tests/README.md](./tests/README.md) for test details.
 
 ---
 
