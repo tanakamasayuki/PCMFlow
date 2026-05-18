@@ -108,6 +108,8 @@ default_profile: host
 - `ringbuffer/` — `PCMRingBuffer` の単体テスト。
 - `convert/` — `PCMConvert`（bit depth / channel / gain）の単体テスト。
 - `bytestream/` — `ByteStream` 抽象と `MemoryByteStream` の単体テスト。
+- `resample/` — `PCMResample`（線形補間 SRC）の単体テスト。
+- `stream_adapter/` — `StreamByteStream`（Arduino `Stream` → `ByteStream` adapter）の単体テスト。
 - `wav_reader/` — `WavReader` の単体テスト（埋め込み WAV フィクスチャ使用）。
 - `wav_writer/` — `WavWriter` の統合テスト（`output/` に WAV を書き出し、Python の `wave` モジュールで独立検証。host 専用）。
 - `fileio/` — host プロファイルの `fopen` 動作を検証するプローブテスト（host 専用）。
@@ -128,13 +130,13 @@ default_profile: host
 | gain / mute / clipping | ✅ convert | | |
 | `ByteStream` 抽象 / `MemoryByteStream` | ✅ bytestream | | |
 | host fopen 動作確認 | ✅ fileio (host専用) | — | |
-| サンプルレート変換 | | | ⬜ |
+| サンプルレート変換 | ✅ resample | | |
 | WAV reader | ✅ wav_reader | | |
 | WAV writer（optional） | ✅ wav_writer (host専用) | — | |
 | `ByteSink` 抽象 / `MemoryByteSink` | ✅ wav_writer | | |
+| Arduino `Stream` adapter | ✅ stream_adapter | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
-| Arduino `Stream` adapter | | | ⬜ |
 | メモリフットプリント計測 | — | | ⬜ |
 
 ---

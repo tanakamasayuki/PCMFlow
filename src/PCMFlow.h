@@ -8,7 +8,9 @@
 #include "PCMFormat.h"
 #include "ByteStream.h"
 #include "ByteSink.h"
+#include "StreamByteStream.h"
 #include "PCMConvert.h"
+#include "PCMResample.h"
 #include "WavReader.h"
 #include "WavWriter.h"
 

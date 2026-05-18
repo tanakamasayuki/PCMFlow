@@ -108,6 +108,8 @@ Each subdirectory corresponds to one feature under test.
 - `ringbuffer/` — Unit tests for `PCMRingBuffer`.
 - `convert/` — Unit tests for `PCMConvert` (bit depth / channel / gain).
 - `bytestream/` — Unit tests for the `ByteStream` abstraction and `MemoryByteStream`.
+- `resample/` — Unit tests for `PCMResample` (linear-interpolation SRC).
+- `stream_adapter/` — Unit tests for `StreamByteStream` (Arduino `Stream` -> `ByteStream` adapter).
 - `wav_reader/` — Unit tests for `WavReader` (using embedded WAV fixtures).
 - `wav_writer/` — Integration tests for `WavWriter` (writes WAVs into `output/`; the Python side verifies them with the standard `wave` module. host-only).
 - `fileio/` — Probe verifying host-profile `fopen` behavior (host-only).
@@ -128,13 +130,13 @@ Each subdirectory corresponds to one feature under test.
 | Gain / mute / clipping | ✅ convert | | |
 | `ByteStream` abstraction / `MemoryByteStream` | ✅ bytestream | | |
 | host fopen behavior probe | ✅ fileio (host-only) | — | |
-| Sample rate conversion | | | ⬜ |
+| Sample rate conversion | ✅ resample | | |
 | WAV reader | ✅ wav_reader | | |
 | WAV writer (optional) | ✅ wav_writer (host-only) | — | |
 | `ByteSink` abstraction / `MemoryByteSink` | ✅ wav_writer | | |
+| Arduino `Stream` adapter | ✅ stream_adapter | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
-| Arduino `Stream` adapter | | | ⬜ |
 | Memory footprint measurement | — | | ⬜ |
 
 ---
