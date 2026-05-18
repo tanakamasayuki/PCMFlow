@@ -21,9 +21,11 @@
 //
 // Memory: dr_mp3 owns its own working buffers. They are allocated on
 // `begin()` and released on `end()`. Roughly ~16 KB of heap is used.
-class Mp3Decoder : public PCMSource {
+class Mp3Decoder : public PCMSource
+{
 public:
-    enum class Error : uint8_t {
+    enum class Error : uint8_t
+    {
         None,
         NotReady,
         InitFailed,
@@ -33,26 +35,26 @@ public:
     Mp3Decoder() = default;
     ~Mp3Decoder();
 
-    Mp3Decoder(const Mp3Decoder&)            = delete;
-    Mp3Decoder& operator=(const Mp3Decoder&) = delete;
+    Mp3Decoder(const Mp3Decoder &) = delete;
+    Mp3Decoder &operator=(const Mp3Decoder &) = delete;
 
     // Bind to a ByteStream and parse the first MP3 frame to determine
     // channel count and sample rate. Returns true on success.
-    bool begin(ByteStream* input);
+    bool begin(ByteStream *input);
 
     // Release decoder state.
     void end();
 
     // PCMSource interface ------------------------------------------------
-    const PCMFormat& format() const override { return format_; }
-    bool             isReady() const override { return ready_; }
-    bool             isEof() const override   { return eof_; }
+    const PCMFormat &format() const override { return format_; }
+    bool isReady() const override { return ready_; }
+    bool isEof() const override { return eof_; }
     // Output is always 16-bit signed PCM (interleaved). The buffer must
     // hold at least `frameCount * channels * sizeof(int16_t)` bytes.
-    size_t           readFrames(void* out, size_t frameCount) override;
+    size_t readFrames(void *out, size_t frameCount) override;
 
-    Error            lastError() const { return error_; }
-    ByteStream*      input() const     { return in_; }
+    Error lastError() const { return error_; }
+    ByteStream *input() const { return in_; }
 
     // Mark end-of-stream from a callback. Exposed so the dr_mp3 read
     // callback can flag EOF when the underlying ByteStream reports it.
@@ -61,12 +63,12 @@ public:
 private:
     struct Impl;
 
-    Impl*       impl_   = nullptr;
-    ByteStream* in_     = nullptr;
-    PCMFormat   format_ {};
-    bool        ready_  = false;
-    bool        eof_    = false;
-    Error       error_  = Error::NotReady;
+    Impl *impl_ = nullptr;
+    ByteStream *in_ = nullptr;
+    PCMFormat format_{};
+    bool ready_ = false;
+    bool eof_ = false;
+    Error error_ = Error::NotReady;
 };
 
-#endif  // PCMFLOW_MP3DECODER_H
+#endif // PCMFLOW_MP3DECODER_H

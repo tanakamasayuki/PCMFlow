@@ -20,9 +20,11 @@
 // Memory: dr_flac allocates ~50 KB of working state for typical files.
 // Implementation detail: the underlying `drflac*` handle is held by an
 // opaque pImpl so dr_flac's header is not exposed through PCMFlow.
-class FlacDecoder : public PCMSource {
+class FlacDecoder : public PCMSource
+{
 public:
-    enum class Error : uint8_t {
+    enum class Error : uint8_t
+    {
         None,
         NotReady,
         InitFailed,
@@ -33,22 +35,22 @@ public:
     FlacDecoder() = default;
     ~FlacDecoder();
 
-    FlacDecoder(const FlacDecoder&)            = delete;
-    FlacDecoder& operator=(const FlacDecoder&) = delete;
+    FlacDecoder(const FlacDecoder &) = delete;
+    FlacDecoder &operator=(const FlacDecoder &) = delete;
 
-    bool begin(ByteStream* input);
+    bool begin(ByteStream *input);
     void end();
 
     // PCMSource interface ------------------------------------------------
-    const PCMFormat& format() const override { return format_; }
-    bool             isReady() const override { return ready_; }
-    bool             isEof() const override   { return eof_; }
+    const PCMFormat &format() const override { return format_; }
+    bool isReady() const override { return ready_; }
+    bool isEof() const override { return eof_; }
     // Output is always 16-bit signed PCM (interleaved). The buffer must
     // hold at least `frameCount * channels * sizeof(int16_t)` bytes.
-    size_t           readFrames(void* out, size_t frameCount) override;
+    size_t readFrames(void *out, size_t frameCount) override;
 
-    Error            lastError() const { return error_; }
-    ByteStream*      input() const     { return in_; }
+    Error lastError() const { return error_; }
+    ByteStream *input() const { return in_; }
 
     // Total PCM frame count reported by the FLAC stream metadata (0 if unknown).
     uint64_t totalFrames() const { return totalFrames_; }
@@ -59,13 +61,13 @@ public:
 private:
     struct Impl;
 
-    Impl*       impl_        = nullptr;
-    ByteStream* in_          = nullptr;
-    PCMFormat   format_      {};
-    uint64_t    totalFrames_ = 0;
-    bool        ready_       = false;
-    bool        eof_         = false;
-    Error       error_       = Error::NotReady;
+    Impl *impl_ = nullptr;
+    ByteStream *in_ = nullptr;
+    PCMFormat format_{};
+    uint64_t totalFrames_ = 0;
+    bool ready_ = false;
+    bool eof_ = false;
+    Error error_ = Error::NotReady;
 };
 
-#endif  // PCMFLOW_FLACDECODER_H
+#endif // PCMFLOW_FLACDECODER_H

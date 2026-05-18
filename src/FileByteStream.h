@@ -17,26 +17,27 @@
 // The adapter does NOT own the File — call sites are responsible for
 // opening/closing. `PCMFlow::open(fs::FS&, path)` provides a convenience
 // path where PCMFlow owns the File for the duration of playback.
-class FileByteStream : public ByteStream {
+class FileByteStream : public ByteStream
+{
 public:
     FileByteStream() = default;
-    explicit FileByteStream(fs::File& file) : file_(&file) {}
+    explicit FileByteStream(fs::File &file) : file_(&file) {}
 
-    void setFile(fs::File& file) { file_ = &file; }
-    void clear()                  { file_ = nullptr; }
-    fs::File* getFile() const     { return file_; }
+    void setFile(fs::File &file) { file_ = &file; }
+    void clear() { file_ = nullptr; }
+    fs::File *getFile() const { return file_; }
 
-    size_t read(void* dst, size_t count) override;
-    bool   isEof() const override;
-    bool   isSeekable() const override { return file_ != nullptr; }
-    bool   seek(size_t offset) override;
+    size_t read(void *dst, size_t count) override;
+    bool isEof() const override;
+    bool isSeekable() const override { return file_ != nullptr; }
+    bool seek(size_t offset) override;
     size_t size() const override;
     size_t position() const override;
 
 private:
-    fs::File* file_ = nullptr;
+    fs::File *file_ = nullptr;
 };
 
-#endif  // __has_include(<FS.h>)
+#endif // __has_include(<FS.h>)
 
-#endif  // PCMFLOW_FILEBYTESTREAM_H
+#endif // PCMFLOW_FILEBYTESTREAM_H

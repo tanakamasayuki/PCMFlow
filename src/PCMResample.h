@@ -24,21 +24,22 @@
 //   - Output buffer must accommodate the result. Estimate with
 //     `estimateOutputFrames()`.
 //   - Stereo variant operates on interleaved [L,R] frames.
-class PCMResample {
+class PCMResample
+{
 public:
     // Conservative upper bound on output frame count.
     static size_t estimateOutputFrames(size_t inFrames,
                                        uint32_t inRate, uint32_t outRate);
 
     // Mono linear resampling on int16 samples.
-    static size_t linearMonoS16(const int16_t* in, size_t inFrames,
-                                int16_t* out, size_t outCap,
+    static size_t linearMonoS16(const int16_t *in, size_t inFrames,
+                                int16_t *out, size_t outCap,
                                 uint32_t inRate, uint32_t outRate);
 
     // Stereo linear resampling on int16 samples (interleaved L,R).
-    static size_t linearStereoS16(const int16_t* in, size_t inFrames,
-                                  int16_t* out, size_t outCap,
+    static size_t linearStereoS16(const int16_t *in, size_t inFrames,
+                                  int16_t *out, size_t outCap,
                                   uint32_t inRate, uint32_t outRate);
 };
 
-#endif  // PCMFLOW_PCMRESAMPLE_H
+#endif // PCMFLOW_PCMRESAMPLE_H

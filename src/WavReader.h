@@ -29,9 +29,11 @@
 //   if (!r.begin(&src)) { ... }
 //   int16_t buf[256 * 2];
 //   while (size_t n = r.readFrames(buf, 256)) { ... }
-class WavReader : public PCMSource {
+class WavReader : public PCMSource
+{
 public:
-    enum class Error : uint8_t {
+    enum class Error : uint8_t
+    {
         None,
         NotRiff,
         NotWave,
@@ -49,15 +51,15 @@ public:
     // Parse the RIFF/WAVE header from `input`. The stream pointer is
     // retained but not owned. Returns true on success; on failure the
     // reason can be retrieved via lastError().
-    bool begin(ByteStream* input);
+    bool begin(ByteStream *input);
 
     // PCMSource interface ------------------------------------------------
-    const PCMFormat& format() const override { return format_; }
-    bool             isReady() const override { return ready_; }
-    bool             isEof() const override   { return framesRemaining_ == 0; }
-    size_t           readFrames(void* out, size_t frameCount) override;
+    const PCMFormat &format() const override { return format_; }
+    bool isReady() const override { return ready_; }
+    bool isEof() const override { return framesRemaining_ == 0; }
+    size_t readFrames(void *out, size_t frameCount) override;
 
-    Error            lastError() const { return error_; }
+    Error lastError() const { return error_; }
 
     // Total bytes in the "data" chunk reported by the header.
     size_t dataBytes() const { return dataBytes_; }
@@ -67,16 +69,16 @@ public:
     size_t framesRemaining() const { return framesRemaining_; }
 
 private:
-    bool readFully(void* dst, size_t bytes);
+    bool readFully(void *dst, size_t bytes);
     bool skipBytes(size_t bytes);
 
-    ByteStream* in_              = nullptr;
-    PCMFormat   format_          {};
-    size_t      dataBytes_       = 0;
-    size_t      totalFrames_     = 0;
-    size_t      framesRemaining_ = 0;
-    bool        ready_           = false;
-    Error       error_           = Error::NotReady;
+    ByteStream *in_ = nullptr;
+    PCMFormat format_{};
+    size_t dataBytes_ = 0;
+    size_t totalFrames_ = 0;
+    size_t framesRemaining_ = 0;
+    bool ready_ = false;
+    Error error_ = Error::NotReady;
 };
 
-#endif  // PCMFLOW_WAVREADER_H
+#endif // PCMFLOW_WAVREADER_H

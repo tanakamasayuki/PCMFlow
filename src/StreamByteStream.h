@@ -17,20 +17,21 @@
 //   - isEof() returns false unconditionally: generic Streams have no
 //     reliable end-of-stream signal. Callers that need stronger EOF
 //     guarantees should subclass and override.
-class StreamByteStream : public ByteStream {
+class StreamByteStream : public ByteStream
+{
 public:
     StreamByteStream() = default;
-    explicit StreamByteStream(Stream* stream) : stream_(stream) {}
+    explicit StreamByteStream(Stream *stream) : stream_(stream) {}
 
-    void    setStream(Stream* stream) { stream_ = stream; }
-    Stream* getStream() const         { return stream_; }
+    void setStream(Stream *stream) { stream_ = stream; }
+    Stream *getStream() const { return stream_; }
 
-    size_t read(void* dst, size_t count) override;
-    bool   isEof() const override { return false; }
+    size_t read(void *dst, size_t count) override;
+    bool isEof() const override { return false; }
     // Seeking is not part of the Arduino Stream contract.
 
 private:
-    Stream* stream_ = nullptr;
+    Stream *stream_ = nullptr;
 };
 
-#endif  // PCMFLOW_STREAMBYTESTREAM_H
+#endif // PCMFLOW_STREAMBYTESTREAM_H
