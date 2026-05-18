@@ -13,6 +13,7 @@
 #include "PCMResample.h"
 #include "WavReader.h"
 #include "WavWriter.h"
+#include "Mp3Decoder.h"
 
 class PCMRingBuffer {
 public:

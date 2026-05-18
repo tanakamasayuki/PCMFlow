@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import argparse
 import math
+import shutil
 import struct
+import subprocess
+import sys
 from pathlib import Path
 from typing import Iterable
 
@@ -157,6 +160,64 @@ def _identifier(name: str) -> str:
     return s
 
 
+def encode_mp3_fixtures(out_dir: Path) -> dict[str, Path]:
+    """Encode a small set of MP3 fixtures from on-the-fly WAV inputs.
+
+    Returns a mapping of {symbol -> path}. Returns an empty dict and prints
+    a warning if `ffmpeg` is not on PATH — MP3 fixtures are then assumed
+    to already exist (committed) or be regenerated on a developer machine
+    that has ffmpeg installed.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        print(
+            "warning: ffmpeg not found — skipping MP3 fixture generation. "
+            "Install ffmpeg to (re)generate these files.",
+            file=sys.stderr,
+        )
+        return {}
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Specs: (sym, sample_rate, channels, duration_sec, kbps)
+    specs = [
+        ("Sine440Mono22050_128k",   22050, 1, 0.2, 128),
+        ("Sine440Stereo44100_128k", 44100, 2, 0.2, 128),
+    ]
+
+    out: dict[str, Path] = {}
+    for sym, sr, ch, dur, kbps in specs:
+        wav_path = out_dir / f"_tmp_{sym}.wav"
+        mp3_name = f"sine_{sr}_{ch}ch_{kbps}k.mp3"
+        mp3_path = out_dir / mp3_name
+
+        channels: list[list[float]]
+        if ch == 1:
+            channels = [sine(440.0, sr, dur)]
+        else:
+            channels = [sine(440.0, sr, dur), sine(880.0, sr, dur)]
+        write_wav(
+            wav_path,
+            sample_rate=sr,
+            channels=ch,
+            bits_per_sample=16,
+            samples_per_channel=channels,
+        )
+
+        cmd = [
+            ffmpeg, "-y", "-loglevel", "error",
+            "-i", str(wav_path),
+            "-codec:a", "libmp3lame",
+            "-b:a", f"{kbps}k",
+            str(mp3_path),
+        ]
+        subprocess.run(cmd, check=True)
+        wav_path.unlink(missing_ok=True)
+        out[sym] = mp3_path
+
+    return out
+
+
 def emit_c_header(header_path: Path, wavs: dict[str, Path], namespace: str) -> None:
     """Emit a single C header that exposes each WAV file as a `static const
     uint8_t kFoo[]` array plus a matching `kFooSize` constant.
@@ -254,6 +315,16 @@ def main() -> None:
         samples_per_channel=[ramp(8000, 0.05)],
     )
 
+    # MP3 fixtures (via ffmpeg, if available) for the Mp3Decoder test.
+    mp3_dir = root / "mp3_decoder" / "input"
+    mp3_files = encode_mp3_fixtures(mp3_dir)
+    if mp3_files:
+        emit_c_header(
+            mp3_dir / "mp3_fixtures.h",
+            mp3_files,
+            namespace="Mp3Fixtures",
+        )
+
     # Embedded-header companion (for in-memory tests on host + ESP32).
     wav_files = {
         "Sine440Mono8Bit22050":   wav_dir / "sine_440hz_mono_8bit_22050.wav",
@@ -269,6 +340,13 @@ def main() -> None:
     for p in sorted(wav_dir.glob("*.wav")):
         print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
     print(f"  {header_path.relative_to(root)}  ({header_path.stat().st_size} bytes)")
+
+    if mp3_files:
+        mp3_header_path = mp3_dir / "mp3_fixtures.h"
+        print(f"Wrote MP3 fixtures under: {mp3_dir}")
+        for p in sorted(mp3_dir.glob("*.mp3")):
+            print(f"  {p.relative_to(root)}  ({p.stat().st_size} bytes)")
+        print(f"  {mp3_header_path.relative_to(root)}  ({mp3_header_path.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":

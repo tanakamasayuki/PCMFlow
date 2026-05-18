@@ -112,8 +112,9 @@ default_profile: host
 - `stream_adapter/` — `StreamByteStream`（Arduino `Stream` → `ByteStream` adapter）の単体テスト。
 - `wav_reader/` — `WavReader` の単体テスト（埋め込み WAV フィクスチャ使用）。
 - `wav_writer/` — `WavWriter` の統合テスト（`output/` に WAV を書き出し、Python の `wave` モジュールで独立検証。host 専用）。
+- `mp3_decoder/` — `Mp3Decoder` の単体テスト（ffmpeg 生成 MP3 を埋め込み）。
 - `fileio/` — host プロファイルの `fopen` 動作を検証するプローブテスト（host 専用）。
-- `tools/gen_test_audio.py` — 各テストの `input/` 配下に WAV フィクスチャ（と埋め込み用 `.h`）を生成する Python スクリプト。
+- `tools/gen_test_audio.py` — 各テストの `input/` 配下に WAV / MP3 フィクスチャ（と埋め込み用 `.h`）を生成する Python スクリプト。MP3 生成には `ffmpeg` が必要。
 - 以降、機能ごとにディレクトリを追加していく。
 
 ## カバレッジ一覧
@@ -135,7 +136,7 @@ default_profile: host
 | WAV writer（optional） | ✅ wav_writer (host専用) | — | |
 | `ByteSink` 抽象 / `MemoryByteSink` | ✅ wav_writer | | |
 | Arduino `Stream` adapter | ✅ stream_adapter | | |
-| MP3 decoder | | | ⬜ |
+| MP3 decoder | ✅ mp3_decoder | | |
 | FLAC decoder | | | ⬜ |
 | メモリフットプリント計測 | — | | ⬜ |
 

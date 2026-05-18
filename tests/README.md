@@ -112,8 +112,9 @@ Each subdirectory corresponds to one feature under test.
 - `stream_adapter/` — Unit tests for `StreamByteStream` (Arduino `Stream` -> `ByteStream` adapter).
 - `wav_reader/` — Unit tests for `WavReader` (using embedded WAV fixtures).
 - `wav_writer/` — Integration tests for `WavWriter` (writes WAVs into `output/`; the Python side verifies them with the standard `wave` module. host-only).
+- `mp3_decoder/` — Unit tests for `Mp3Decoder` (using ffmpeg-generated MP3 fixtures, embedded).
 - `fileio/` — Probe verifying host-profile `fopen` behavior (host-only).
-- `tools/gen_test_audio.py` — Python script that generates WAV fixtures (and an embed-able `.h`) under each test's `input/` directory.
+- `tools/gen_test_audio.py` — Python script that generates WAV and MP3 fixtures (plus embed-able `.h`) under each test's `input/` directory. MP3 generation requires `ffmpeg` on `PATH`.
 - A new directory is added per feature as the implementation grows.
 
 ## Coverage matrix
@@ -135,7 +136,7 @@ Each subdirectory corresponds to one feature under test.
 | WAV writer (optional) | ✅ wav_writer (host-only) | — | |
 | `ByteSink` abstraction / `MemoryByteSink` | ✅ wav_writer | | |
 | Arduino `Stream` adapter | ✅ stream_adapter | | |
-| MP3 decoder | | | ⬜ |
+| MP3 decoder | ✅ mp3_decoder | | |
 | FLAC decoder | | | ⬜ |
 | Memory footprint measurement | — | | ⬜ |
 
