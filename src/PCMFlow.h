@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "PCMConvert.h"
+
 struct PCMFormat {
     uint32_t sampleRate    = 0;
     uint8_t  channels      = 0;  // 1 (mono) or 2 (stereo)
