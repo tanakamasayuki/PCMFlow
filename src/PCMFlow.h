@@ -7,8 +7,10 @@
 
 #include "PCMFormat.h"
 #include "ByteStream.h"
+#include "ByteSink.h"
 #include "PCMConvert.h"
 #include "WavReader.h"
+#include "WavWriter.h"
 
 class PCMRingBuffer {
 public:

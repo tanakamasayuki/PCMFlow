@@ -109,6 +109,7 @@ default_profile: host
 - `convert/` — `PCMConvert`（bit depth / channel / gain）の単体テスト。
 - `bytestream/` — `ByteStream` 抽象と `MemoryByteStream` の単体テスト。
 - `wav_reader/` — `WavReader` の単体テスト（埋め込み WAV フィクスチャ使用）。
+- `wav_writer/` — `WavWriter` の統合テスト（`output/` に WAV を書き出し、Python の `wave` モジュールで独立検証。host 専用）。
 - `fileio/` — host プロファイルの `fopen` 動作を検証するプローブテスト（host 専用）。
 - `tools/gen_test_audio.py` — 各テストの `input/` 配下に WAV フィクスチャ（と埋め込み用 `.h`）を生成する Python スクリプト。
 - 以降、機能ごとにディレクトリを追加していく。
@@ -129,9 +130,10 @@ default_profile: host
 | host fopen 動作確認 | ✅ fileio (host専用) | — | |
 | サンプルレート変換 | | | ⬜ |
 | WAV reader | ✅ wav_reader | | |
+| WAV writer（optional） | ✅ wav_writer (host専用) | — | |
+| `ByteSink` 抽象 / `MemoryByteSink` | ✅ wav_writer | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
-| WAV writer（optional） | | | ⬜ |
 | Arduino `Stream` adapter | | | ⬜ |
 | メモリフットプリント計測 | — | | ⬜ |
 

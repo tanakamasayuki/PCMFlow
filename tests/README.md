@@ -109,6 +109,7 @@ Each subdirectory corresponds to one feature under test.
 - `convert/` — Unit tests for `PCMConvert` (bit depth / channel / gain).
 - `bytestream/` — Unit tests for the `ByteStream` abstraction and `MemoryByteStream`.
 - `wav_reader/` — Unit tests for `WavReader` (using embedded WAV fixtures).
+- `wav_writer/` — Integration tests for `WavWriter` (writes WAVs into `output/`; the Python side verifies them with the standard `wave` module. host-only).
 - `fileio/` — Probe verifying host-profile `fopen` behavior (host-only).
 - `tools/gen_test_audio.py` — Python script that generates WAV fixtures (and an embed-able `.h`) under each test's `input/` directory.
 - A new directory is added per feature as the implementation grows.
@@ -129,9 +130,10 @@ Each subdirectory corresponds to one feature under test.
 | host fopen behavior probe | ✅ fileio (host-only) | — | |
 | Sample rate conversion | | | ⬜ |
 | WAV reader | ✅ wav_reader | | |
+| WAV writer (optional) | ✅ wav_writer (host-only) | — | |
+| `ByteSink` abstraction / `MemoryByteSink` | ✅ wav_writer | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
-| WAV writer (optional) | | | ⬜ |
 | Arduino `Stream` adapter | | | ⬜ |
 | Memory footprint measurement | — | | ⬜ |
 
