@@ -107,6 +107,10 @@ default_profile: host
 - `smoke/` — 雛形検証用のスモークテスト。ホスト上でビルド・実行できる最小スケッチ。テスト基盤の動作確認用。
 - `ringbuffer/` — `PCMRingBuffer` の単体テスト。
 - `convert/` — `PCMConvert`（bit depth / channel / gain）の単体テスト。
+- `bytestream/` — `ByteStream` 抽象と `MemoryByteStream` の単体テスト。
+- `wav_reader/` — `WavReader` の単体テスト（埋め込み WAV フィクスチャ使用）。
+- `fileio/` — host プロファイルの `fopen` 動作を検証するプローブテスト（host 専用）。
+- `tools/gen_test_audio.py` — 各テストの `input/` 配下に WAV フィクスチャ（と埋め込み用 `.h`）を生成する Python スクリプト。
 - 以降、機能ごとにディレクトリを追加していく。
 
 ## カバレッジ一覧
@@ -121,8 +125,10 @@ default_profile: host
 | signed ⇔ unsigned 変換 | ✅ convert | | |
 | mono ⇔ stereo 変換 | ✅ convert | | |
 | gain / mute / clipping | ✅ convert | | |
+| `ByteStream` 抽象 / `MemoryByteStream` | ✅ bytestream | | |
+| host fopen 動作確認 | ✅ fileio (host専用) | — | |
 | サンプルレート変換 | | | ⬜ |
-| WAV reader | | | ⬜ |
+| WAV reader | ✅ wav_reader | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
 | WAV writer（optional） | | | ⬜ |

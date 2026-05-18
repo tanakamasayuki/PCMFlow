@@ -107,6 +107,10 @@ Each subdirectory corresponds to one feature under test.
 - `smoke/` — Template smoke test. Minimal sketch that builds and runs on the host. Verifies the test infrastructure itself.
 - `ringbuffer/` — Unit tests for `PCMRingBuffer`.
 - `convert/` — Unit tests for `PCMConvert` (bit depth / channel / gain).
+- `bytestream/` — Unit tests for the `ByteStream` abstraction and `MemoryByteStream`.
+- `wav_reader/` — Unit tests for `WavReader` (using embedded WAV fixtures).
+- `fileio/` — Probe verifying host-profile `fopen` behavior (host-only).
+- `tools/gen_test_audio.py` — Python script that generates WAV fixtures (and an embed-able `.h`) under each test's `input/` directory.
 - A new directory is added per feature as the implementation grows.
 
 ## Coverage matrix
@@ -121,8 +125,10 @@ Each subdirectory corresponds to one feature under test.
 | Signed ⇔ unsigned conversion | ✅ convert | | |
 | Mono ⇔ stereo conversion | ✅ convert | | |
 | Gain / mute / clipping | ✅ convert | | |
+| `ByteStream` abstraction / `MemoryByteStream` | ✅ bytestream | | |
+| host fopen behavior probe | ✅ fileio (host-only) | — | |
 | Sample rate conversion | | | ⬜ |
-| WAV reader | | | ⬜ |
+| WAV reader | ✅ wav_reader | | |
 | MP3 decoder | | | ⬜ |
 | FLAC decoder | | | ⬜ |
 | WAV writer (optional) | | | ⬜ |
