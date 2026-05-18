@@ -50,14 +50,20 @@ host プロファイルでは `fopen` などの C 標準ファイル I/O が **�
 
 #### 入出力ファイルの置き場所
 
-実測により、host プロファイルでのスケッチ実行時の CWD は **スケッチディレクトリ自身**（`tests/<name>/`）になる。`.out` の場所（`build/host/`）ではないことに注意。
+host プロファイルでは 2 種類のファイル API でパス解決ルールが異なる:
+
+| API | 基準パス | 例 |
+|-----|---------|-----|
+| C 標準 `fopen("rel", ...)` | スケッチディレクトリ (`tests/<name>/`) | `tests/<name>/output/foo.bin` |
+| Arduino `fs::FS` / `SD.open("/abs", ...)` | 実行ファイル `.out` の置き場 (`build/host/`) + FS の root 名 | `tests/<name>/build/host/SD/foo.bin` |
 
 各テストでファイルを使う場合は次のサブフォルダ規約に従う。
 
 | フォルダ | git 管理 | 用途 |
 |----------|---------|------|
-| `input/`  | ✅ 対象  | テスト固定入力（WAV / MP3 / golden ファイルなど）。リポジトリにコミット。 |
+| `input/`  | ✅ 対象  | テスト固定入力（WAV / MP3 / golden ファイルなど）。リポジトリにコミット。スケッチからは `fopen("input/...")` で読む。 |
 | `output/` | ❌ 対象外 (`tests/.gitignore`) | スケッチが書き出す成果物。テスト後も残るので手動確認可能。次回実行前に [conftest.py](conftest.py) が削除。 |
+| `build/<profile>/SD/` | ❌ 対象外 (build 全体が ignore) | `SD.open()` 経由のファイル。build ごと毎回作り直されるので恒久保管には向かない。事前ファイルを置きたい場合は build 後にコピーが必要。 |
 
 スケッチ側の例:
 

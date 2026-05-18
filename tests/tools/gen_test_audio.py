@@ -28,6 +28,7 @@ from typing import Iterable
 
 TOOLS_DIR = Path(__file__).resolve().parent
 TESTS_DIR = TOOLS_DIR.parent
+REPO_ROOT = TESTS_DIR.parent
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +249,51 @@ def _encode_via_ffmpeg(
     return out
 
 
+def write_examples_fixtures() -> None:
+    """Emit embed-headers under examples/<Name>/ used by the example sketches.
+
+    Examples are user-facing demos, so the generated files are committed
+    to the repo: users can build and flash an example without first
+    running this generator.
+    """
+    examples_root = REPO_ROOT / "examples"
+
+    # PlayMp3: a short 440 Hz mono sine encoded as MP3.
+    play_mp3_dir = examples_root / "PlayMp3"
+    if play_mp3_dir.exists():
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            print(
+                "warning: ffmpeg not found — skipping PlayMp3 fixture.",
+                file=sys.stderr,
+            )
+            return
+        sr, ch, dur = 22050, 1, 0.3
+        wav_tmp = play_mp3_dir / "_tmp.wav"
+        write_wav(
+            wav_tmp,
+            sample_rate=sr,
+            channels=ch,
+            bits_per_sample=16,
+            samples_per_channel=[sine(440.0, sr, dur)],
+        )
+        mp3_path = play_mp3_dir / "sine_440hz_mono_22050.mp3"
+        subprocess.run(
+            [ffmpeg, "-y", "-loglevel", "error",
+             "-i", str(wav_tmp),
+             "-codec:a", "libmp3lame", "-b:a", "128k",
+             str(mp3_path)],
+            check=True,
+        )
+        wav_tmp.unlink(missing_ok=True)
+        emit_c_header(
+            play_mp3_dir / "embedded_mp3.h",
+            {"Mp3": mp3_path},
+            namespace="EmbeddedMp3",
+        )
+        print(f"Wrote example fixture: {mp3_path.relative_to(REPO_ROOT)}")
+
+
 def build_pipeline_fixtures(out_dir: Path) -> dict[str, Path]:
     """A single 440 Hz mono sine encoded as WAV / MP3 / FLAC so the
     pipeline integration test can exercise all three codecs with the
@@ -420,6 +466,9 @@ def main() -> None:
             pipe_files,
             namespace="PipelineFixtures",
         )
+
+    # Examples-side fixtures (committed under examples/<Name>/).
+    write_examples_fixtures()
 
     # Embedded-header companion (for in-memory tests on host + ESP32).
     wav_files = {

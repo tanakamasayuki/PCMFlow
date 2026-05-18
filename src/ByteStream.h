@@ -40,8 +40,15 @@ public:
     MemoryByteStream() = default;
     MemoryByteStream(const void* data, size_t size) { reset(data, size); }
 
+    // Convenience: deduce size from a fixed-size array.
+    template <size_t N>
+    explicit MemoryByteStream(const uint8_t (&arr)[N]) { reset(arr, N); }
+
     // Point at a new buffer and rewind to offset 0.
     void reset(const void* data, size_t size);
+
+    template <size_t N>
+    void reset(const uint8_t (&arr)[N]) { reset(static_cast<const void*>(arr), N); }
 
     size_t read(void* dst, size_t count) override;
     bool   isEof() const override     { return pos_ >= size_; }

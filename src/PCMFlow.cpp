@@ -17,24 +17,19 @@ bool fourcc_eq(const uint8_t* p, const char* tag) {
 }  // namespace
 
 PCMFlow::~PCMFlow() {
-    end();
+    close();
 }
 
 // ---- Configuration --------------------------------------------------------
 
-void PCMFlow::setInput(ByteStream* input, CodecKind kind) {
-    input_         = input;
-    requestedKind_ = kind;
-}
-
 void PCMFlow::setOutputFormat(const PCMFormat& fmt) {
     outFormat_ = fmt;
+    markConfigDirty();
 }
 
 void PCMFlow::setGain(float gain) {
     if (gain < 0.0f) gain = 0.0f;
-    // Clamp to a sane upper bound to keep Q15 in 32-bit range without overflow.
-    if (gain > 32.0f) gain = 32.0f;
+    if (gain > 32.0f) gain = 32.0f;   // keeps Q15 * int16 within int32
     gainQ15_ = static_cast<int32_t>(gain * 32768.0f + 0.5f);
 }
 
@@ -45,13 +40,77 @@ void PCMFlow::setMute(bool muted) {
 void PCMFlow::setBufferFrames(size_t frames) {
     if (frames == 0) frames = 1;
     bufferFrames_ = frames;
+    markConfigDirty();
+}
+
+void PCMFlow::setInput(ByteStream& source, CodecKind kind) {
+    // Drop any previously-owned source: we're switching to a caller-owned one.
+    releaseOwnedSource();
+    input_         = &source;
+    requestedKind_ = kind;
+    markConfigDirty();
+}
+
+void PCMFlow::markConfigDirty() {
+    if (ready_) {
+        // Tear down decoder + buffers so the next pump() re-initialises with
+        // the new configuration. Don't touch owned sources here — only the
+        // decoder side of state.
+        teardownDecoder();
+        ring_.end();
+        freeScratch();
+        srcFormat_ = PCMFormat{};
+        codec_     = CodecKind::Auto;
+        srcEof_    = false;
+        ready_     = false;
+    }
+    initFailed_ = false;
+    if (error_ != Error::None) error_ = Error::NotReady;
+}
+
+// ---- open() helpers -------------------------------------------------------
+
+bool PCMFlow::open(const void* data, size_t size, CodecKind kind) {
+    close();
+    ownedMemory_.reset(data, size);
+    ownedMemoryActive_ = true;
+    input_             = &ownedMemory_;
+    requestedKind_     = kind;
+    return ensureReady();
+}
+
+#if __has_include(<FS.h>)
+bool PCMFlow::open(fs::FS& fs, const char* path, CodecKind kind) {
+    close();
+    ownedFile_ = fs.open(path);
+    if (!ownedFile_) {
+        error_ = Error::FileOpenFailed;
+        return false;
+    }
+    ownedFileStream_.setFile(ownedFile_);
+    ownedFileActive_ = true;
+    input_           = &ownedFileStream_;
+    requestedKind_   = kind;
+    return ensureReady();
+}
+#endif
+
+void PCMFlow::releaseOwnedSource() {
+    ownedMemoryActive_ = false;
+#if __has_include(<FS.h>)
+    if (ownedFileActive_) {
+        ownedFileStream_.clear();
+        if (ownedFile_) ownedFile_.close();
+        ownedFileActive_ = false;
+    }
+#endif
 }
 
 // ---- Codec sniff ----------------------------------------------------------
 
 bool PCMFlow::sniffCodec(CodecKind& detected) {
     if (input_ == nullptr) return false;
-    if (!input_->isSeekable()) return false;  // need to rewind after peek
+    if (!input_->isSeekable()) return false;
 
     uint8_t hdr[16] = {0};
     const size_t got = input_->read(hdr, sizeof(hdr));
@@ -63,12 +122,11 @@ bool PCMFlow::sniffCodec(CodecKind& detected) {
     } else if (fourcc_eq(hdr, "fLaC")) {
         detected = CodecKind::Flac;
     } else if (got >= 3 && hdr[0] == 'I' && hdr[1] == 'D' && hdr[2] == '3') {
-        detected = CodecKind::Mp3;  // MP3 with ID3v2 prefix
+        detected = CodecKind::Mp3;
     } else if (got >= 2 && hdr[0] == 0xFF && (hdr[1] & 0xE0) == 0xE0) {
-        detected = CodecKind::Mp3;  // MP3 frame sync
+        detected = CodecKind::Mp3;
     }
 
-    // Rewind for the real decoder.
     if (!input_->seek(0)) return false;
     return detected != CodecKind::Auto;
 }
@@ -112,20 +170,17 @@ PCMFormat PCMFlow::resolveSourceFormat() {
     return PCMFormat{};
 }
 
-// ---- Scratch buffers ------------------------------------------------------
+// ---- Scratch ---------------------------------------------------------------
 
 bool PCMFlow::allocateScratch() {
-    // Source: kSourceChunkFrames * srcChannels samples (always int16).
     srcScratchCap_ = kSourceChunkFrames;
     srcScratch_    = new (std::nothrow) int16_t[srcScratchCap_ * srcFormat_.channels];
     if (srcScratch_ == nullptr) return false;
 
-    // After channel conversion: same frame count, outChannels.
     chanScratchCap_ = srcScratchCap_;
     chanScratch_    = new (std::nothrow) int16_t[chanScratchCap_ * outFormat_.channels];
     if (chanScratch_ == nullptr) return false;
 
-    // After rate conversion: up to ceil(N * out/in) + 1 frames.
     rateScratchCap_ = PCMResample::estimateOutputFrames(
         srcScratchCap_, srcFormat_.sampleRate, outFormat_.sampleRate);
     if (rateScratchCap_ < srcScratchCap_) rateScratchCap_ = srcScratchCap_;
@@ -135,11 +190,15 @@ bool PCMFlow::allocateScratch() {
     return true;
 }
 
-// ---- Lifecycle ------------------------------------------------------------
+void PCMFlow::freeScratch() {
+    delete[] srcScratch_;  srcScratch_  = nullptr; srcScratchCap_  = 0;
+    delete[] chanScratch_; chanScratch_ = nullptr; chanScratchCap_ = 0;
+    delete[] rateScratch_; rateScratch_ = nullptr; rateScratchCap_ = 0;
+}
 
-bool PCMFlow::begin() {
-    end();
+// ---- Init / close ---------------------------------------------------------
 
+bool PCMFlow::doInit() {
     if (input_ == nullptr) { error_ = Error::NoInput; return false; }
     if (!outFormat_.isValid()) { error_ = Error::InvalidOutputFormat; return false; }
 
@@ -148,7 +207,7 @@ bool PCMFlow::begin() {
         if (!sniffCodec(codec_)) { error_ = Error::SniffFailed; return false; }
     }
 
-    if (!initDecoder()) { error_ = Error::DecoderInitFailed; teardownDecoder(); return false; }
+    if (!initDecoder()) { teardownDecoder(); error_ = Error::DecoderInitFailed; return false; }
 
     srcFormat_ = resolveSourceFormat();
     if (!srcFormat_.isValid()) {
@@ -158,12 +217,15 @@ bool PCMFlow::begin() {
     }
 
     if (!allocateScratch()) {
-        end();
+        teardownDecoder();
+        freeScratch();
         error_ = Error::ScratchAllocFailed;
         return false;
     }
+
     if (!ring_.begin(outFormat_, bufferFrames_)) {
-        end();
+        teardownDecoder();
+        freeScratch();
         error_ = Error::RingBufferAllocFailed;
         return false;
     }
@@ -174,24 +236,34 @@ bool PCMFlow::begin() {
     return true;
 }
 
-void PCMFlow::end() {
+bool PCMFlow::ensureReady() {
+    if (ready_) return true;
+    if (initFailed_) return false;
+    if (!doInit()) { initFailed_ = true; return false; }
+    return true;
+}
+
+void PCMFlow::close() {
     teardownDecoder();
     ring_.end();
-    delete[] srcScratch_;  srcScratch_  = nullptr; srcScratchCap_  = 0;
-    delete[] chanScratch_; chanScratch_ = nullptr; chanScratchCap_ = 0;
-    delete[] rateScratch_; rateScratch_ = nullptr; rateScratchCap_ = 0;
+    freeScratch();
+    releaseOwnedSource();
+
+    input_     = nullptr;
     srcFormat_ = PCMFormat{};
     codec_     = CodecKind::Auto;
+    requestedKind_ = CodecKind::Auto;
     srcEof_    = false;
     ready_     = false;
+    initFailed_ = false;
     error_     = Error::NotReady;
 }
 
-void PCMFlow::flush() {
+void PCMFlow::flushBuffer() {
     ring_.clear();
 }
 
-// ---- pump pipeline --------------------------------------------------------
+// ---- pump / chunk processing ----------------------------------------------
 
 size_t PCMFlow::pullSource(int16_t* dst, size_t frameCap) {
     if (wav_  != nullptr) return wav_->readFrames(dst, frameCap);
@@ -205,23 +277,16 @@ size_t PCMFlow::processChunk() {
     const size_t ringFree = ring_.freeFrames();
     if (ringFree == 0) return 0;
 
-    // Cap the source pull so the produced output never exceeds ringFree —
-    // anything we decode beyond that would be silently dropped at the
-    // ring buffer.
     size_t srcWant = srcScratchCap_;
     if (srcFormat_.sampleRate == outFormat_.sampleRate) {
         if (ringFree < srcWant) srcWant = ringFree;
     } else if (outFormat_.sampleRate > srcFormat_.sampleRate) {
-        // Upsample: out > in. Reverse the ratio, round down for safety,
-        // and pad against the tail-hold that adds 1 extra output frame.
         const uint64_t safe = static_cast<uint64_t>(ringFree)
                               * srcFormat_.sampleRate
                               / outFormat_.sampleRate;
         size_t cap = (safe > 1) ? static_cast<size_t>(safe - 1) : 1;
         if (cap < srcWant) srcWant = cap;
     } else {
-        // Downsample: out ≤ in, so ringFree input frames cannot
-        // overproduce.
         if (ringFree < srcWant) srcWant = ringFree;
     }
     if (srcWant == 0) srcWant = 1;
@@ -232,10 +297,8 @@ size_t PCMFlow::processChunk() {
         return 0;
     }
 
-    // ---- Channel conversion (s16, srcCh -> outCh) ----
     int16_t* chanBuf = chanScratch_;
     if (srcFormat_.channels == outFormat_.channels) {
-        // No conversion: alias chanBuf to srcScratch_.
         chanBuf = srcScratch_;
     } else if (srcFormat_.channels == 1 && outFormat_.channels == 2) {
         PCMConvert::monoToStereoS16(srcScratch_, chanScratch_, got);
@@ -243,7 +306,6 @@ size_t PCMFlow::processChunk() {
         PCMConvert::stereoToMonoS16(srcScratch_, chanScratch_, got);
     }
 
-    // ---- Sample rate conversion (s16, srcRate -> outRate) ----
     int16_t* rateBuf   = rateScratch_;
     size_t   rateCount = 0;
     if (srcFormat_.sampleRate == outFormat_.sampleRate) {
@@ -260,7 +322,6 @@ size_t PCMFlow::processChunk() {
     }
     if (rateCount == 0) return 0;
 
-    // ---- Gain / mute (in place on rateBuf) ----
     const size_t totalSamples = rateCount * outFormat_.channels;
     if (muted_) {
         memset(rateBuf, 0, totalSamples * sizeof(int16_t));
@@ -268,14 +329,9 @@ size_t PCMFlow::processChunk() {
         PCMConvert::applyGainS16(rateBuf, totalSamples, gainQ15_);
     }
 
-    // ---- Bit depth conversion + push to ring ----
     if (outFormat_.bitsPerSample == 16) {
         return ring_.writeFrames(rateBuf, rateCount);
     } else {
-        // 8-bit unsigned: convert in-place into a small staging area.
-        // Reuse rateBuf storage (2 bytes/sample) by overwriting from the
-        // start; we read int16 and write uint8 from index 0 forward, which
-        // is safe because uint8 stride is smaller.
         uint8_t* out8 = reinterpret_cast<uint8_t*>(rateBuf);
         PCMConvert::s16ToU8(rateBuf, out8, totalSamples);
         return ring_.writeFrames(out8, rateCount);
@@ -283,9 +339,8 @@ size_t PCMFlow::processChunk() {
 }
 
 bool PCMFlow::pump() {
-    if (!ready_) return false;
+    if (!ensureReady()) return false;
     bool didWork = false;
-    // Keep filling the ring until it's full or the source is exhausted.
     while (ring_.freeFrames() > 0 && !srcEof_) {
         const size_t pushed = processChunk();
         if (pushed == 0) break;
@@ -293,8 +348,6 @@ bool PCMFlow::pump() {
     }
     return didWork;
 }
-
-// ---- Consumer-side API ----------------------------------------------------
 
 size_t PCMFlow::availableFrames() const {
     return ring_.availableFrames();
@@ -306,5 +359,5 @@ size_t PCMFlow::readFrames(void* out, size_t frameCount) {
 }
 
 bool PCMFlow::isEof() const {
-    return srcEof_ && ring_.availableFrames() == 0;
+    return ready_ && srcEof_ && ring_.availableFrames() == 0;
 }

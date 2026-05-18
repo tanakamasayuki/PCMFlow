@@ -50,14 +50,20 @@ On the host profile, C standard file I/O such as `fopen` operates against **the 
 
 #### Where input / output files live
 
-Empirically, the CWD when the sketch runs under the host profile is the **sketch directory itself** (`tests/<name>/`), not the location of the `.out` binary (`build/host/`).
+The host profile resolves filesystem paths via two different base directories depending on which API the sketch uses:
+
+| API | Base | Example |
+|-----|------|---------|
+| C stdio `fopen("rel", ...)` | Sketch dir (`tests/<name>/`) | `tests/<name>/output/foo.bin` |
+| Arduino `fs::FS` / `SD.open("/abs", ...)` | Directory of the `.out` binary + the FS root name | `tests/<name>/build/host/SD/foo.bin` |
 
 Per-test files follow this convention:
 
 | Folder    | Git-tracked                | Purpose |
 |-----------|----------------------------|---------|
-| `input/`  | ✅ tracked                  | Fixed test inputs (WAV / MP3 / golden files). Committed to the repo. |
+| `input/`  | ✅ tracked                  | Fixed test inputs (WAV / MP3 / golden files). Read from sketches via `fopen("input/...")`. |
 | `output/` | ❌ ignored (`tests/.gitignore`) | Sketch-generated artifacts. Left in place after the run for inspection; wiped before the next run by [conftest.py](conftest.py). |
+| `build/<profile>/SD/` | ❌ ignored (entire `build/` is ignored) | Files written via `SD.open()`. Rebuilt every run, so not for permanent storage. To stage files before a run, copy them into this directory after the build step. |
 
 Sketch-side example:
 
