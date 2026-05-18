@@ -7,6 +7,7 @@
 
 #include "ByteStream.h"
 #include "PCMFormat.h"
+#include "PCMSource.h"
 
 // Streaming FLAC decoder built on top of dr_flac.
 //
@@ -19,7 +20,7 @@
 // Memory: dr_flac allocates ~50 KB of working state for typical files.
 // Implementation detail: the underlying `drflac*` handle is held by an
 // opaque pImpl so dr_flac's header is not exposed through PCMFlow.
-class FlacDecoder {
+class FlacDecoder : public PCMSource {
 public:
     enum class Error : uint8_t {
         None,
@@ -38,18 +39,19 @@ public:
     bool begin(ByteStream* input);
     void end();
 
-    bool             isReady() const   { return ready_; }
+    // PCMSource interface ------------------------------------------------
+    const PCMFormat& format() const override { return format_; }
+    bool             isReady() const override { return ready_; }
+    bool             isEof() const override   { return eof_; }
+    // Output is always 16-bit signed PCM (interleaved). The buffer must
+    // hold at least `frameCount * channels * sizeof(int16_t)` bytes.
+    size_t           readFrames(void* out, size_t frameCount) override;
+
     Error            lastError() const { return error_; }
-    const PCMFormat& format() const    { return format_; }
-    bool             isEof() const     { return eof_; }
     ByteStream*      input() const     { return in_; }
 
     // Total PCM frame count reported by the FLAC stream metadata (0 if unknown).
     uint64_t totalFrames() const { return totalFrames_; }
-
-    // Pull up to `frameCount` decoded frames into `out`. The output
-    // buffer must hold `frameCount * channels` int16 samples.
-    size_t readFrames(int16_t* out, size_t frameCount);
 
     // Mark end-of-stream from a callback.
     void setEof(bool v) { eof_ = v; }

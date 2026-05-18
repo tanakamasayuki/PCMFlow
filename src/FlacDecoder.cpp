@@ -119,10 +119,10 @@ void FlacDecoder::end() {
     format_      = PCMFormat{};
 }
 
-size_t FlacDecoder::readFrames(int16_t* out, size_t frameCount) {
+size_t FlacDecoder::readFrames(void* out, size_t frameCount) {
     if (!ready_ || out == nullptr || frameCount == 0) return 0;
     const drflac_uint64 got = drflac_read_pcm_frames_s16(
-        impl_->flac, frameCount, out);
+        impl_->flac, frameCount, static_cast<drflac_int16*>(out));
     if (got == 0) eof_ = true;
     return static_cast<size_t>(got);
 }

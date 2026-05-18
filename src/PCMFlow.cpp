@@ -46,8 +46,17 @@ void PCMFlow::setBufferFrames(size_t frames) {
 void PCMFlow::setInput(ByteStream& source, CodecKind kind) {
     // Drop any previously-owned source: we're switching to a caller-owned one.
     releaseOwnedSource();
-    input_         = &source;
-    requestedKind_ = kind;
+    externalSource_ = nullptr;
+    input_          = &source;
+    requestedKind_  = kind;
+    markConfigDirty();
+}
+
+void PCMFlow::setInputSource(PCMSource& source) {
+    releaseOwnedSource();
+    input_          = nullptr;
+    externalSource_ = &source;
+    requestedKind_  = CodecKind::Auto;
     markConfigDirty();
 }
 
@@ -139,17 +148,23 @@ bool PCMFlow::initDecoder() {
     case CodecKind::Wav:
         wav_ = new (std::nothrow) WavReader();
         if (wav_ == nullptr) return false;
-        return wav_->begin(input_);
+        if (!wav_->begin(input_)) return false;
+        activeSource_ = wav_;
+        return true;
 
     case CodecKind::Mp3:
         mp3_ = new (std::nothrow) Mp3Decoder();
         if (mp3_ == nullptr) return false;
-        return mp3_->begin(input_);
+        if (!mp3_->begin(input_)) return false;
+        activeSource_ = mp3_;
+        return true;
 
     case CodecKind::Flac:
         flac_ = new (std::nothrow) FlacDecoder();
         if (flac_ == nullptr) return false;
-        return flac_->begin(input_);
+        if (!flac_->begin(input_)) return false;
+        activeSource_ = flac_;
+        return true;
 
     case CodecKind::Auto:
     default:
@@ -158,15 +173,14 @@ bool PCMFlow::initDecoder() {
 }
 
 void PCMFlow::teardownDecoder() {
+    activeSource_ = nullptr;
     if (wav_)  { delete wav_;  wav_  = nullptr; }
     if (mp3_)  { delete mp3_;  mp3_  = nullptr; }
     if (flac_) { delete flac_; flac_ = nullptr; }
 }
 
 PCMFormat PCMFlow::resolveSourceFormat() {
-    if (wav_  != nullptr) return wav_->format();
-    if (mp3_  != nullptr) return mp3_->format();
-    if (flac_ != nullptr) return flac_->format();
+    if (activeSource_ != nullptr) return activeSource_->format();
     return PCMFormat{};
 }
 
@@ -199,15 +213,23 @@ void PCMFlow::freeScratch() {
 // ---- Init / close ---------------------------------------------------------
 
 bool PCMFlow::doInit() {
-    if (input_ == nullptr) { error_ = Error::NoInput; return false; }
     if (!outFormat_.isValid()) { error_ = Error::InvalidOutputFormat; return false; }
 
-    codec_ = requestedKind_;
-    if (codec_ == CodecKind::Auto) {
-        if (!sniffCodec(codec_)) { error_ = Error::SniffFailed; return false; }
-    }
+    if (externalSource_ != nullptr) {
+        // External PCMSource path: skip codec sniff and decoder creation.
+        if (!externalSource_->isReady()) { error_ = Error::DecoderInitFailed; return false; }
+        activeSource_ = externalSource_;
+        codec_ = CodecKind::Auto;   // not meaningful in this path
+    } else {
+        if (input_ == nullptr) { error_ = Error::NoInput; return false; }
 
-    if (!initDecoder()) { teardownDecoder(); error_ = Error::DecoderInitFailed; return false; }
+        codec_ = requestedKind_;
+        if (codec_ == CodecKind::Auto) {
+            if (!sniffCodec(codec_)) { error_ = Error::SniffFailed; return false; }
+        }
+
+        if (!initDecoder()) { teardownDecoder(); error_ = Error::DecoderInitFailed; return false; }
+    }
 
     srcFormat_ = resolveSourceFormat();
     if (!srcFormat_.isValid()) {
@@ -249,14 +271,16 @@ void PCMFlow::close() {
     freeScratch();
     releaseOwnedSource();
 
-    input_     = nullptr;
-    srcFormat_ = PCMFormat{};
-    codec_     = CodecKind::Auto;
-    requestedKind_ = CodecKind::Auto;
-    srcEof_    = false;
-    ready_     = false;
-    initFailed_ = false;
-    error_     = Error::NotReady;
+    input_          = nullptr;
+    externalSource_ = nullptr;
+    activeSource_   = nullptr;
+    srcFormat_      = PCMFormat{};
+    codec_          = CodecKind::Auto;
+    requestedKind_  = CodecKind::Auto;
+    srcEof_         = false;
+    ready_          = false;
+    initFailed_     = false;
+    error_          = Error::NotReady;
 }
 
 void PCMFlow::flushBuffer() {
@@ -266,9 +290,7 @@ void PCMFlow::flushBuffer() {
 // ---- pump / chunk processing ----------------------------------------------
 
 size_t PCMFlow::pullSource(int16_t* dst, size_t frameCap) {
-    if (wav_  != nullptr) return wav_->readFrames(dst, frameCap);
-    if (mp3_  != nullptr) return mp3_->readFrames(dst, frameCap);
-    if (flac_ != nullptr) return flac_->readFrames(dst, frameCap);
+    if (activeSource_ != nullptr) return activeSource_->readFrames(dst, frameCap);
     return 0;
 }
 

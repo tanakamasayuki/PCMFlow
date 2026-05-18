@@ -121,6 +121,7 @@ Each subdirectory corresponds to one feature under test.
 - `mp3_decoder/` — Unit tests for `Mp3Decoder` (using ffmpeg-generated MP3 fixtures, embedded).
 - `flac_decoder/` — Unit tests for `FlacDecoder` (using ffmpeg-generated FLAC fixtures, embedded).
 - `pipeline/` — End-to-end integration test for the `PCMFlow` pipeline class (codec sniff, channel / rate / bit-depth conversion, gain / mute, exercised across WAV/MP3/FLAC of the same source content).
+- `external_source/` — Plugs a mock `PCMSource` implementation into `PCMFlow::setInputSource()`, exercising the external codec adapter path.
 - `fileio/` — Probe verifying host-profile `fopen` behavior (host-only).
 - `tools/gen_test_audio.py` — Python script that generates WAV, MP3, and FLAC fixtures (plus embed-able `.h`) under each test's `input/` directory. MP3 / FLAC generation requires `ffmpeg` on `PATH`.
 - A new directory is added per feature as the implementation grows.
@@ -147,6 +148,8 @@ Each subdirectory corresponds to one feature under test.
 | MP3 decoder | ✅ mp3_decoder | | |
 | FLAC decoder | ✅ flac_decoder | | |
 | `PCMFlow` pipeline (auto codec / formatting / gain) | ✅ pipeline | | |
+| `PCMSource` abstraction / external codec hook | ✅ external_source | | |
+| `PCMSink` abstraction | ✅ wav_writer (uses interface) | | |
 | Memory footprint measurement | — | | ⬜ |
 
 ---

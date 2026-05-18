@@ -7,6 +7,7 @@
 
 #include "ByteStream.h"
 #include "PCMFormat.h"
+#include "PCMSource.h"
 
 // Minimal RIFF/WAVE reader for PCM (uncompressed) input.
 //
@@ -28,7 +29,7 @@
 //   if (!r.begin(&src)) { ... }
 //   int16_t buf[256 * 2];
 //   while (size_t n = r.readFrames(buf, 256)) { ... }
-class WavReader {
+class WavReader : public PCMSource {
 public:
     enum class Error : uint8_t {
         None,
@@ -50,9 +51,13 @@ public:
     // reason can be retrieved via lastError().
     bool begin(ByteStream* input);
 
-    bool             isReady() const   { return ready_; }
+    // PCMSource interface ------------------------------------------------
+    const PCMFormat& format() const override { return format_; }
+    bool             isReady() const override { return ready_; }
+    bool             isEof() const override   { return framesRemaining_ == 0; }
+    size_t           readFrames(void* out, size_t frameCount) override;
+
     Error            lastError() const { return error_; }
-    const PCMFormat& format() const    { return format_; }
 
     // Total bytes in the "data" chunk reported by the header.
     size_t dataBytes() const { return dataBytes_; }
@@ -60,12 +65,6 @@ public:
     size_t dataFrames() const { return totalFrames_; }
     // Frames remaining to read.
     size_t framesRemaining() const { return framesRemaining_; }
-    bool   isEof() const           { return framesRemaining_ == 0; }
-
-    // Pull up to `frameCount` frames from the underlying stream into `out`.
-    // Returns the number of frames actually retrieved. The caller is
-    // responsible for the buffer size: frameCount * format().bytesPerFrame().
-    size_t readFrames(void* out, size_t frameCount);
 
 private:
     bool readFully(void* dst, size_t bytes);

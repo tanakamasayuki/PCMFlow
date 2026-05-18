@@ -6,6 +6,8 @@
 #include <stddef.h>
 
 #include "PCMFormat.h"
+#include "PCMSource.h"
+#include "PCMSink.h"
 #include "ByteStream.h"
 #include "ByteSink.h"
 #include "StreamByteStream.h"
@@ -80,6 +82,15 @@ public:
 
     void setInput(ByteStream& source, CodecKind kind = CodecKind::Auto);
 
+    // ---- Input: external decoder (caller-owned PCMSource) ---------------
+    //
+    // Skips PCMFlow's built-in codec selection entirely. Use this to plug
+    // in external decoders (e.g. an Opus / Vorbis / AAC adapter). The
+    // source's `format()` must report 16-bit signed PCM at any sample
+    // rate, mono or stereo. PCMFlow does not call `begin()` on the
+    // source — the caller prepares it.
+    void setInputSource(PCMSource& source);
+
     // ---- Input: helpers (PCMFlow owns the source) -----------------------
 
     // Memory (pointer + size). Returns true on success (lazy init succeeded).
@@ -145,7 +156,13 @@ private:
     bool         muted_         = false;
     size_t       bufferFrames_  = 2048;
 
-    // ---- Active decoder (only one is live at a time) -------------------
+    // ---- Active source --------------------------------------------------
+    // Either points at one of the owned built-in decoders (wav_/mp3_/flac_)
+    // or at a caller-owned external PCMSource. Set by initDecoder() or
+    // setInputSource().
+    PCMSource*   activeSource_   = nullptr;
+    PCMSource*   externalSource_ = nullptr;   // non-owning
+
     WavReader*   wav_  = nullptr;
     Mp3Decoder*  mp3_  = nullptr;
     FlacDecoder* flac_ = nullptr;

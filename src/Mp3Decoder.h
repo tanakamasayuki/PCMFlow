@@ -7,6 +7,7 @@
 
 #include "ByteStream.h"
 #include "PCMFormat.h"
+#include "PCMSource.h"
 
 // Streaming MP3 decoder built on top of dr_mp3.
 //
@@ -20,7 +21,7 @@
 //
 // Memory: dr_mp3 owns its own working buffers. They are allocated on
 // `begin()` and released on `end()`. Roughly ~16 KB of heap is used.
-class Mp3Decoder {
+class Mp3Decoder : public PCMSource {
 public:
     enum class Error : uint8_t {
         None,
@@ -42,16 +43,16 @@ public:
     // Release decoder state.
     void end();
 
-    bool             isReady() const   { return ready_; }
-    Error            lastError() const { return error_; }
-    const PCMFormat& format() const    { return format_; }
-    bool             isEof() const     { return eof_; }
-    ByteStream*      input() const     { return in_; }
+    // PCMSource interface ------------------------------------------------
+    const PCMFormat& format() const override { return format_; }
+    bool             isReady() const override { return ready_; }
+    bool             isEof() const override   { return eof_; }
+    // Output is always 16-bit signed PCM (interleaved). The buffer must
+    // hold at least `frameCount * channels * sizeof(int16_t)` bytes.
+    size_t           readFrames(void* out, size_t frameCount) override;
 
-    // Pull up to `frameCount` decoded frames into `out`. The output
-    // buffer must hold `frameCount * channels` int16 samples.
-    // Returns the number of frames actually produced.
-    size_t readFrames(int16_t* out, size_t frameCount);
+    Error            lastError() const { return error_; }
+    ByteStream*      input() const     { return in_; }
 
     // Mark end-of-stream from a callback. Exposed so the dr_mp3 read
     // callback can flag EOF when the underlying ByteStream reports it.

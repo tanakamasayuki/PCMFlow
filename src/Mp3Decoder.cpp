@@ -109,10 +109,10 @@ void Mp3Decoder::end() {
     format_ = PCMFormat{};
 }
 
-size_t Mp3Decoder::readFrames(int16_t* out, size_t frameCount) {
+size_t Mp3Decoder::readFrames(void* out, size_t frameCount) {
     if (!ready_ || out == nullptr || frameCount == 0) return 0;
     const drmp3_uint64 got = drmp3_read_pcm_frames_s16(
-        &impl_->mp3, frameCount, out);
+        &impl_->mp3, frameCount, static_cast<drmp3_int16*>(out));
     if (got == 0) eof_ = true;
     return static_cast<size_t>(got);
 }
