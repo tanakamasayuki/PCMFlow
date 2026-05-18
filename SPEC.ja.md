@@ -1,5 +1,7 @@
 # PCMFlow 仕様書
 
+> English: [SPEC.md](SPEC.md)
+
 ## 1. 概要
 
 **PCMFlow** は、Arduino 環境向けの軽量オーディオデコード / PCMフローライブラリである。
