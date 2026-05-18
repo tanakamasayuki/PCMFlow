@@ -1,0 +1,20 @@
+{
+  "name": "PCMFlow",
+  "version": "0.1.0",
+  "description": "Lightweight audio decode and PCM flow library for Arduino. Decodes audio input and produces formatted PCM (8-bit unsigned / 16-bit signed, mono/stereo) into an internal ring buffer. Device-, codec-, and task-independent. Bundled decoders: WAV, MP3, FLAC.",
+  "keywords": "audio, pcm, decode, i2s, dac, esp32, wav, mp3, flac",
+  "authors": [
+    {
+      "name": "TANAKA Masayuki",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tanakamasayuki/PCMFlow.git"
+  },
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "headers": "PCMFlow.h"
+}

@@ -1,0 +1,30 @@
+#######################################
+# Syntax Coloring Map for PCMFlow
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+PCMFlow	KEYWORD1
+PCMFormat	KEYWORD1
+ByteStream	KEYWORD1
+ByteSink	KEYWORD1
+PCMSource	KEYWORD1
+PCMSink	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+setInput	KEYWORD2
+setOutputFormat	KEYWORD2
+setGain	KEYWORD2
+begin	KEYWORD2
+pump	KEYWORD2
+availableFrames	KEYWORD2
+readFrames	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
