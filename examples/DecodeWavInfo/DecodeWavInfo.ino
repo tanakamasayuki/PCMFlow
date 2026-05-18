@@ -139,13 +139,18 @@ void loop()
         return;
     }
 
-    int16_t buf[64];
-    const size_t frames = audio.readFrames(buf, 64);
+    static constexpr size_t kChunkFrames = 64;
+    static uint8_t buf[PCMFlow::maxBytesForFrames(kChunkFrames)];
+    const size_t frames = audio.readFrames(buf, kChunkFrames);
 
+    // This example fixes the output to mono 16-bit, so we interpret
+    // `buf` as little-endian int16 directly.
     int16_t peak = 0;
-    for (size_t i = 0; i < frames; ++i)
+    const size_t bytes = frames * audio.bytesPerFrame();
+    for (size_t i = 0; i + 1 < bytes; i += 2)
     {
-        const int16_t v = buf[i] < 0 ? -buf[i] : buf[i];
+        const int16_t s = static_cast<int16_t>(buf[i] | (buf[i + 1] << 8));
+        const int16_t v = s < 0 ? -s : s;
         if (v > peak)
             peak = v;
     }

@@ -57,7 +57,8 @@ void loop()
 {
     audio.pump();
 
-    if (audio.availableFrames() < 256)
+    static constexpr size_t kChunkFrames = 256;
+    if (audio.availableFrames() < kChunkFrames)
     {
         if (audio.isEof())
         {
@@ -69,19 +70,25 @@ void loop()
         return;
     }
 
-    int16_t buf[256 * 2]; // 256 frames * 2 channels
-    const size_t got = audio.readFrames(buf, 256);
+    // Byte-typed buffer sized to the worst-case output format
+    // (stereo 16-bit). The templated readFrames() overload clamps to
+    // whatever the actual format needs, so this works for any output
+    // configuration without rewriting the declaration.
+    static uint8_t buf[PCMFlow::maxBytesForFrames(kChunkFrames)];
+    const size_t got = audio.readFrames(buf, kChunkFrames);
 
     // TODO: hand `buf` off to your output device. For example, on ESP32
     // with the ESP_I2S library:
     //
-    //   i2s.write(reinterpret_cast<uint8_t*>(buf), got * 2 * sizeof(int16_t));
+    //   i2s.write(buf, got * audio.bytesPerFrame());
     //
     // Here we just sample the peak so the example does something visible.
+    const size_t bytes = got * audio.bytesPerFrame();
     int16_t peak = 0;
-    for (size_t i = 0; i < got * 2; ++i)
+    for (size_t i = 0; i + 1 < bytes; i += 2)
     {
-        const int16_t v = buf[i] < 0 ? -buf[i] : buf[i];
+        const int16_t s = static_cast<int16_t>(buf[i] | (buf[i + 1] << 8));
+        const int16_t v = s < 0 ? -s : s;
         if (v > peak)
             peak = v;
     }

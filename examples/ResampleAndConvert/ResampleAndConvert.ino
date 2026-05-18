@@ -119,10 +119,12 @@ void loop()
         return;
     }
 
-    uint8_t buf[128 * 2];
-    const size_t got = audio.readFrames(buf, 128);
+    static constexpr size_t kChunkFrames = 128;
+    static uint8_t buf[PCMFlow::maxBytesForFrames(kChunkFrames)];
+    const size_t got = audio.readFrames(buf, kChunkFrames);
     g_totalFrames += got;
-    for (size_t i = 0; i < got * 2; ++i)
+    const size_t bytes = got * audio.bytesPerFrame();
+    for (size_t i = 0; i < bytes; ++i)
     {
         int dev = (int)buf[i] - 128;
         if (dev < 0)

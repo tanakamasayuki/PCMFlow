@@ -51,12 +51,42 @@ void setup() {
 void loop() {
     audio.pump();
     if (audio.availableFrames() >= 256) {
-        int16_t buf[256 * 2];              // stereo / 16-bit
-        audio.readFrames(buf, 256);
-        // hand off to I2S / DAC / USB Audio
+        // Byte-typed buffer sized via the helpers. `maxBytesForFrames()`
+        // is a constexpr worst-case bound (stereo 16-bit = 4 bytes/frame),
+        // so this buffer fits any output format.
+        static uint8_t buf[PCMFlow::maxBytesForFrames(256)];
+        const size_t got = audio.readFrames(buf, 256);
+        // Hand `got * audio.bytesPerFrame()` bytes to I2S / DAC / USB Audio.
     }
 }
 ```
+
+### Sizing the output buffer
+
+Hand-rolling `int16_t buf[256 * 2]` is fragile: if the output format ever changes (mono, 8-bit, etc.), the size goes wrong and you overrun memory. The safe pattern is **byte-typed buffer + helper**:
+
+```cpp
+// (1) Compile-time worst case (recommended; static storage)
+static uint8_t buf[PCMFlow::maxBytesForFrames(256)];   // = 256 * 4 bytes
+audio.readFrames(buf, 256);
+
+// (2) Exact size for the current output format (GCC VLA — Arduino default)
+uint8_t buf[audio.bytesForFrames(frames)];
+audio.readFrames(buf, frames);
+
+// (3) When the buffer size is known to the compiler the templated overload clamps for you
+uint8_t buf[1024];
+audio.readFrames(buf, 256);   // frameCount is clipped so the call cannot overrun
+```
+
+Helpers provided:
+
+| API | Returns |
+|-----|---------|
+| `audio.bytesPerFrame()` | Bytes per frame in the active output format |
+| `audio.bytesForFrames(n)` | Total bytes for `n` frames |
+| `PCMFlow::maxBytesPerFrame()` (constexpr) | 4 (stereo 16-bit upper bound) |
+| `PCMFlow::maxBytesForFrames(n)` (constexpr) | `n * 4` |
 
 ### Play an embedded MP3 (PROGMEM)
 
@@ -105,6 +135,31 @@ ms = bufferFrames × 1000 / sampleRate
 | Background music / casual playback | 100–500 ms | 4096–22050 |
 
 **The default of 2048 frames is fine for most cases.** Pattern: glitching → increase, OOM → decrease.
+
+### Decoder-side internal buffers (separate from the PCMFlow ring)
+
+The MP3 / FLAC decoders maintain **their own chunk-sized working buffers** inside the codec library, independent of PCMFlow's ring buffer.
+
+| Decoder | Internal cache | What it holds |
+|---------|----------------|---------------|
+| dr_mp3 (MP3) | ~16 KB | One MP3 frame of PCM (1152 samples × 2 ch × 2 byte ≈ 4.6 KB) + assorted scratch |
+| dr_flac (FLAC) | ~50 KB | One FLAC block of PCM + compressed-stream working area |
+
+These buffers:
+- Are allocated on the first `pump()` after `open()` / `setInput()`.
+- Are released fully by `close()`.
+- Are not user-configurable (they belong to the upstream library).
+- Add to memory cost on top of the PCMFlow ring buffer and scratch.
+
+The total runtime heap footprint is roughly:
+
+```
+PCMFlow ring (≒ setBufferFrames * outFormat.bytesPerFrame())
++ PCMFlow scratch (fixed ~8 KB)
++ decoder internal (MP3: ~16 KB / FLAC: ~50 KB / WAV: ~0)
+```
+
+ESP32 (~280 KB free heap) handles this comfortably. On tighter targets (PSRAM-less ESP32-C3 with other large allocations), the decisive factor is usually whether FLAC support is needed.
 
 ### Note for USB Audio and other low-latency outputs
 

@@ -51,12 +51,42 @@ void setup() {
 void loop() {
     audio.pump();
     if (audio.availableFrames() >= 256) {
-        int16_t buf[256 * 2];              // stereo / 16-bit
-        audio.readFrames(buf, 256);
-        // I2S / DAC / USB Audio へ送る
+        // バイト配列で受け、サイズは PCMFlow のヘルパーで決める。
+        // maxBytesForFrames() は stereo 16-bit (4 bytes/frame) を上限と
+        // した定数で、どの出力フォーマットでも安全に収まる。
+        static uint8_t buf[PCMFlow::maxBytesForFrames(256)];
+        const size_t got = audio.readFrames(buf, 256);
+        // got * audio.bytesPerFrame() バイトを I2S / DAC / USB Audio へ
     }
 }
 ```
+
+### バッファサイズの取り方
+
+`int16_t buf[256 * 2]` のような手書き計算は出力フォーマットを変えたときにずれてしまいバッファオーバランの原因になる。常に **バイト配列 + ヘルパー** で書くと安全:
+
+```cpp
+// (1) コンパイル時の上限値で取る（推奨、static 確保）
+static uint8_t buf[PCMFlow::maxBytesForFrames(256)];   // = 256 * 4 byte
+audio.readFrames(buf, 256);
+
+// (2) 現在の出力フォーマットに合わせて取る（GCC VLA、動的 frame 数のとき）
+uint8_t buf[audio.bytesForFrames(frames)];
+audio.readFrames(buf, frames);
+
+// (3) 配列のサイズが分かっていればテンプレート overload が clamp してくれる
+uint8_t buf[1024];
+audio.readFrames(buf, 256);   // bytesPerFrame() を超える frames は安全に切り詰める
+```
+
+PCMFlow が提供するヘルパー:
+
+| API | 戻り値 |
+|-----|-------|
+| `audio.bytesPerFrame()` | 現在の出力フォーマットでの 1 frame あたりバイト数 |
+| `audio.bytesForFrames(n)` | `n` frame ぶんのバイト数 |
+| `PCMFlow::maxBytesPerFrame()` (constexpr) | 4 (stereo 16-bit) |
+| `PCMFlow::maxBytesForFrames(n)` (constexpr) | `n * 4` |
 
 ### PROGMEM 上の MP3 を再生
 
@@ -105,6 +135,31 @@ ms = bufferFrames × 1000 / sampleRate
 | BGM 等の緩い再生 | 100〜500 ms | 4096〜22050 |
 
 **基本はデフォルト 2048 frame で問題ない**。音が途切れる → 増やす、OOM → 減らす、というスタンスで OK。
+
+### デコーダ内部バッファ (PCMFlow ring とは別枠)
+
+MP3 / FLAC のデコーダは PCMFlow とは独立に、**コーデック内部に 1 チャンクぶんの作業バッファ** を確保している。
+
+| デコーダ | 内部キャッシュ | 内訳 |
+|---------|--------------|------|
+| dr_mp3 (MP3) | 約 16 KB | MP3 frame 1 つぶんの PCM (1152 サンプル × 2ch × 2byte = ~4.6 KB) + 各種スクラッチ |
+| dr_flac (FLAC) | 約 50 KB | FLAC block 1 つぶんの PCM + 圧縮データ作業領域 |
+
+これらは:
+- `open()` / `setInput()` の初回 `pump()` で確保される
+- `close()` で完全に解放される
+- 利用者から制御できない（ライブラリの責務範囲外）
+- PCMFlow の ring buffer / scratch とは別枠で必要
+
+つまり実行時の総ヒープ消費は概算で:
+
+```
+PCMFlow ring (≒ setBufferFrames * outFormat.bytesPerFrame())
++ PCMFlow scratch (固定 ~8 KB)
++ デコーダ内部 (MP3: ~16 KB / FLAC: ~50 KB / WAV: ほぼ 0)
+```
+
+ESP32 (~280 KB heap) なら何の問題もない量。メモリが厳しい環境（PSRAM 無し ESP32-C3 等で他に大きな確保がある場合）では、FLAC を扱うかどうかが分岐点になる。
 
 ### USB Audio など低レイテンシ用途の注意
 
