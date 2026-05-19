@@ -12,6 +12,7 @@
 #include "ByteSink.h"
 #include "StreamByteStream.h"
 #include "FileByteStream.h"
+#include "FileByteSink.h"
 #include "PCMConvert.h"
 #include "PCMResample.h"
 #include "PCMRingBuffer.h"
