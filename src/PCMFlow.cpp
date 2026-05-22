@@ -431,6 +431,8 @@ size_t PCMFlow::processChunk()
     const size_t got = pullSource(srcScratch_, srcWant);
     if (got == 0)
     {
+        if (activeSource_ != nullptr && !activeSource_->isEof())
+            return 0;
         srcEof_ = true;
         return 0;
     }
