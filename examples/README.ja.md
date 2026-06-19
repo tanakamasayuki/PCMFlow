@@ -2,12 +2,15 @@
 
 > English: [README.md](README.md)
 
-`PCMFlow` API のデモスケッチ集。いずれも特定のオーディオデバイスには出力しない — `loop()` 内の `TODO` コメント箇所が、I2S / DAC / USB Audio などの出力先へ PCM を渡す位置になる。
+`PCMFlow` API のデモスケッチ集。多くはデバイス非依存で、`loop()` 内の
+`TODO` コメント箇所が I2S / DAC / USB Audio などの出力先へ PCM を渡す位置になる。
+`M5UnifiedPlayMp3` は実機再生サンプルで、`PCMFlowDevice` を使う。
 
 | サンプル | 内容 |
 |---------|------|
 | [DecodeWavInfo](DecodeWavInfo/) | 最小エンドツーエンド: flash 上の手書き PCM WAV を `PCMFlow` でデコードし、フォーマットとピーク値を Serial へ出力。 |
 | [PlayMp3](PlayMp3/) | flash 上の MP3 → codec 自動検出 → チャンネル up-mix + リサンプル + gain → PCM 取得。 |
+| [M5UnifiedPlayMp3](M5UnifiedPlayMp3/) | flash 上の MP3 → PCMFlow mono 出力 → `PCMFlowDevice` による M5Unified speaker buffered 再生。 |
 | [ResampleAndConvert](ResampleAndConvert/) | ランタイムに 22.05 kHz mono 16-bit の WAV を生成し、44.1 kHz stereo 8-bit（ESP32 内蔵 DAC 向け）+ gain 付きで変換。 |
 
 ## 埋め込みフィクスチャの再生成

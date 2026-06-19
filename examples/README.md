@@ -2,12 +2,16 @@
 
 > 日本語版: [README.ja.md](README.ja.md)
 
-Sample sketches that demonstrate the `PCMFlow` API. None of them drives a specific audio device — the `TODO` blocks in the loop bodies show where you would hand the decoded PCM to your I2S / DAC / USB Audio sink.
+Sample sketches that demonstrate the `PCMFlow` API. Most are device-neutral:
+the `TODO` blocks in the loop bodies show where you would hand decoded PCM to
+your I2S / DAC / USB Audio sink. `M5UnifiedPlayMp3` is the hardware playback
+example and uses `PCMFlowDevice`.
 
 | Example | Demonstrates |
 |---------|--------------|
 | [DecodeWavInfo](DecodeWavInfo/) | Minimal end-to-end: a hand-crafted PCM WAV in flash decoded through `PCMFlow`, format and peak sample printed on Serial. |
 | [PlayMp3](PlayMp3/) | MP3 in flash → codec auto-detection → channel up-mix + resample + gain → consumable PCM. |
+| [M5UnifiedPlayMp3](M5UnifiedPlayMp3/) | MP3 in flash → PCMFlow mono output → `PCMFlowDevice` buffered M5Unified speaker playback on M5Stack Core2. |
 | [ResampleAndConvert](ResampleAndConvert/) | Builds a 22.05 kHz mono 16-bit WAV at runtime, converts it to 44.1 kHz stereo 8-bit (ESP32 internal DAC format) with gain applied. |
 
 ## Regenerating embedded fixtures

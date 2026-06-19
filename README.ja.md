@@ -10,6 +10,25 @@ Arduino 向けの軽量オーディオデコード / PCM フローライブラ�
 
 ---
 
+## インストール
+
+Arduino Library Manager から **PCMFlow** をインストールする。用途に応じて、必要な兄弟ライブラリだけを追加する:
+
+| ライブラリ | 使う場面 |
+|-----------|----------|
+| **PCMFlow** | WAV / MP3 / FLAC デコード、PCM バッファ、gain、チャンネル変換、リサンプリング |
+| [PCMFlowG711](https://github.com/tanakamasayuki/PCMFlowG711) | G.711 μ-law / A-law パケットによる狭帯域音声 |
+| [PCMFlowG722](https://github.com/tanakamasayuki/PCMFlowG722) | 64 kbps の G.722 / 16 kHz HD voice |
+| [PCMFlowOpus](https://github.com/tanakamasayuki/PCMFlowOpus) | 低ビットレートの wideband / fullband Opus 音声 |
+| [PCMFlowUDP](https://github.com/tanakamasayuki/PCMFlowUDP) | Raw UDP、VBAN PCM、RTP transport |
+| [PCMFlowDevice](https://github.com/tanakamasayuki/PCMFlowDevice) | M5Unified speaker buffering などのデバイス固有 helper |
+
+責務は分けている。PCMFlow は PCM の整形、codec 兄弟はパケット codec、
+PCMFlowUDP はネットワーク transport、PCMFlowDevice はボード固有 audio API
+との橋渡しを担当する。
+
+---
+
 ## 対応コーデックと入力源
 
 **同梱デコーダ** (`PCMFlow::open()` で自動検出 / 明示指定):
@@ -196,6 +215,7 @@ USB Audio は 1 ms 周期で読みに来るが、**リングバッファを 1 ms
 
 - **DecodeWavInfo** — 最小エンドツーエンド (PROGMEM WAV をデコードして Serial 出力)
 - **PlayMp3** — PROGMEM MP3 を codec 自動検出で再生
+- **M5UnifiedPlayMp3** — PCMFlowDevice の buffered speaker helper を使った M5Stack Core2 向け MP3 再生
 - **ResampleAndConvert** — 22.05 kHz mono 16-bit → 44.1 kHz stereo 8-bit + gain
 
 詳細は [examples/README.ja.md](examples/README.ja.md)。

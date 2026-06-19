@@ -10,6 +10,26 @@ See [SPEC.md](SPEC.md) for the full specification.
 
 ---
 
+## Installation
+
+Install **PCMFlow** from the Arduino Library Manager. Install optional sibling
+libraries only when your sketch needs them:
+
+| Library | Use it for |
+|---------|------------|
+| **PCMFlow** | WAV / MP3 / FLAC decode, PCM buffering, gain, channel conversion, resampling |
+| [PCMFlowG711](https://github.com/tanakamasayuki/PCMFlowG711) | G.711 μ-law / A-law packets for narrowband voice |
+| [PCMFlowG722](https://github.com/tanakamasayuki/PCMFlowG722) | G.722 packets for 16 kHz HD voice at 64 kbps |
+| [PCMFlowOpus](https://github.com/tanakamasayuki/PCMFlowOpus) | Opus packets for low-bitrate wideband / fullband voice |
+| [PCMFlowUDP](https://github.com/tanakamasayuki/PCMFlowUDP) | Raw UDP, VBAN PCM, and RTP transport |
+| [PCMFlowDevice](https://github.com/tanakamasayuki/PCMFlowDevice) | Device-specific helpers such as buffered M5Unified speaker playback |
+
+The split is intentional: PCMFlow shapes PCM, codec siblings encode/decode
+packet formats, PCMFlowUDP moves bytes over the network, and PCMFlowDevice
+bridges PCM to board-specific audio APIs.
+
+---
+
 ## Codecs and input sources
 
 **Bundled decoders** (auto-detected by `PCMFlow::open()`, or specified explicitly):
@@ -196,6 +216,7 @@ Sketches under [examples/](examples/):
 
 - **DecodeWavInfo** — minimal end-to-end (decodes a PROGMEM WAV, prints format and peaks).
 - **PlayMp3** — embedded MP3 with codec auto-detection.
+- **M5UnifiedPlayMp3** — embedded MP3 playback on M5Stack Core2 using PCMFlowDevice's buffered speaker helper.
 - **ResampleAndConvert** — 22.05 kHz mono 16-bit → 44.1 kHz stereo 8-bit with gain.
 
 See [examples/README.md](examples/README.md) for details.
