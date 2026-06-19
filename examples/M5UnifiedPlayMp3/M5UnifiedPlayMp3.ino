@@ -4,8 +4,8 @@
 // PCM stream out of M5.Speaker on an M5Stack Core2.
 //
 // Pipeline:
-//   embedded MP3 -> PCMFlow (decode + 44.1 kHz / stereo / 16-bit)
-//      -> readFrames -> M5.Speaker.playRaw
+//   embedded MP3 -> PCMFlow (decode + 44.1 kHz / mono / 16-bit)
+//      -> readFrames -> M5SpeakerBufferedPlayer
 //
 // The MP3 payload (`embedded_mp3.h`) is shared with the PlayMp3 example.
 // To regenerate it, run from the repo root:
@@ -14,13 +14,18 @@
 
 #include <M5Unified.h>
 #include <PCMFlow.h>
+#include <PCMFlowDeviceM5.h>
 #include "embedded_mp3.h"
 
 static PCMFlow audio;
 
 static constexpr uint32_t kOutRate = 44100;
-static constexpr uint8_t kOutCh = 2;
+static constexpr uint8_t kOutCh = 1;
 static constexpr size_t kChunkFrames = 256;
+static constexpr size_t kMaxPlayFrames = (kOutRate * 80u) / 1000u;
+using Player = M5SpeakerBufferedPlayer<kMaxPlayFrames>;
+
+static Player player;
 
 void setup()
 {
@@ -40,6 +45,14 @@ void setup()
     audio.setOutputFormat({kOutRate, kOutCh, 16});
     audio.setGain(0.8f);
     audio.setBufferFrames(4096);
+
+    if (!player.begin({kOutRate, kOutCh, 16}, Player::stableProfile()))
+    {
+        Serial.println("M5SpeakerBufferedPlayer.begin failed");
+        M5.Display.setCursor(4, 40);
+        M5.Display.print("player failed");
+        return;
+    }
 
     if (!audio.open(EmbeddedMp3::kMp3, EmbeddedMp3::kMp3Size))
     {
@@ -71,6 +84,7 @@ void loop()
     {
         if (audio.isEof())
         {
+            player.flush();
             M5.Display.setCursor(4, 40);
             M5.Display.print("EOF");
             Serial.println("EOF");
@@ -83,17 +97,10 @@ void loop()
         return;
     }
 
-    static int16_t buf[kChunkFrames * 2]; // stereo
+    static int16_t buf[kChunkFrames];
     const size_t got = audio.readFrames(buf, kChunkFrames);
     if (got == 0)
         return;
 
-    // playRaw(buffer, length_samples, rate, stereo). length is in *samples*,
-    // not frames — for stereo, that's frames * 2.
-    while (!M5.Speaker.playRaw(buf, got * kOutCh, kOutRate, /*stereo=*/true))
-    {
-        // Speaker queue is full; let it drain a bit before retrying so we
-        // don't drop the chunk we just decoded.
-        delay(1);
-    }
+    player.writeFrames(buf, got);
 }
